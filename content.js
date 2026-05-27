@@ -1931,7 +1931,7 @@
           currency: currentCurrency,
           usdAmount: normalizedUsd, // Normalized for global stats
           ticker: appSettings.ticker,
-          shares: Number(estUsd) / Number(appSettings.price),
+          shares: (Number(estUsd) * exRate) / Number(appSettings.price),
           url: window.location.href,
           title: document.title,
           store: storeName
