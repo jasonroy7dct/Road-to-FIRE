@@ -143,6 +143,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.action === 'openDashboard') {
+    const lang = request.lang || 'en';
+    chrome.tabs.create({ url: chrome.runtime.getURL(`dashboard.html?lang=${lang}`) });
+    sendResponse({ ok: true });
+    return true;
+  }
+
   if (request.action !== 'getPrice') return;
 
   const raw = (request.symbol || 'VOO').trim();

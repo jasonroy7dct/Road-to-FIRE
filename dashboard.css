@@ -1,0 +1,385 @@
+/*
+ * Dashboard — Stripe layout, jDCT brand colors
+ * Palette: #003358 (navy), #425466 (secondary), #1a73e8 (accent blue), #F6F9FC (bg)
+ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #F8FAFC;
+  color: #003358;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══ Top Navigation ═══ */
+.topnav {
+  background: #fff;
+  border-bottom: 1px solid #E3E8EE;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.topnav-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 32px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+
+.nav-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #003358;
+}
+
+.nav-badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: #8792A2;
+  background: #F6F9FC;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* ═══ Container ═══ */
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 32px 80px;
+}
+
+.page-head {
+  margin-bottom: 36px;
+  text-align: center;
+  padding: 40px 20px;
+  background: linear-gradient(180deg, #EBF5FF 0%, rgba(235, 245, 255, 0) 100%);
+  border-radius: 24px;
+  margin-top: -12px;
+}
+
+.page-head h1 {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  margin-bottom: 8px;
+  color: #003358;
+}
+
+.page-head p {
+  font-size: 16px;
+  color: #425466;
+  font-weight: 500;
+}
+
+/* ═══ Metric Cards ═══ */
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+}
+
+.metric-top {
+  margin-bottom: 8px;
+}
+
+.metric-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #425466;
+}
+
+.metric-value {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  color: #003358;
+  line-height: 1.2;
+}
+
+.metric-value.accent {
+  color: #1a73e8;
+}
+
+.metric-delta {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.metric-delta.positive {
+  color: #0CBF4C;
+}
+
+/* ═══ Recalculate ═══ */
+.recalc {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #E3E8EE;
+}
+
+.recalc-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+#recalc-input {
+  flex: 1;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #E3E8EE;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #003358;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  background: #fff;
+}
+
+#recalc-input:focus {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+
+#recalc-btn {
+  height: 36px;
+  padding: 0 20px;
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2);
+}
+
+#recalc-btn:hover {
+  background: #1557b0;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(26, 115, 232, 0.3);
+}
+
+.chips {
+  display: flex;
+  gap: 6px;
+}
+
+.chip {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #E3E8EE;
+  border-radius: 6px;
+  background: #fff;
+  color: #425466;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.chip:hover {
+  background: #F6F9FC;
+}
+
+.chip.active {
+  background: #1a73e8;
+  color: #fff;
+  border-color: #1a73e8;
+}
+
+/* ═══ Table Card ═══ */
+.table-card {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.04);
+}
+
+.table-head {
+  padding: 24px 32px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table-head h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #003358;
+}
+
+.table-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: #8792A2;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  padding: 12px 32px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #8792A2;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+td {
+  padding: 16px 32px;
+  font-size: 14px;
+  border-top: 1px solid #F8FAFC;
+  color: #425466;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+th.align-r, td.align-r { text-align: right; }
+
+td a {
+  color: #003358;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+td a:hover {
+  color: #1a73e8;
+}
+
+.store-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.store-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.store-logo-fallback {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: #E3E8EE;
+  color: #8792A2;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.store-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #425466;
+}
+
+.col-amount {
+  font-weight: 600;
+  text-align: right;
+  color: #003358;
+}
+
+.col-gain {
+  font-weight: 600;
+  text-align: right;
+  color: #0CBF4C;
+}
+
+.empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: #8792A2;
+  font-size: 14px;
+}
+
+/* ═══ Responsive ═══ */
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  min-width: 600px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 24px 16px 60px;
+  }
+
+  .topnav-inner {
+    padding: 0 16px;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-value {
+    font-size: 28px;
+  }
+
+  .page-head h1 {
+    font-size: 22px;
+  }
+
+  th, td {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .table-head {
+    padding: 12px 16px;
+  }
+
+  .chips {
+    flex-wrap: wrap;
+  }
+}

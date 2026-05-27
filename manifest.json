@@ -1,10 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Road to FIRE",
-  "version": "2.3.4",
+  "version": "3.0.1",
   "description": "Visualize your opportunity cost. Convert any price into ETF shares and track long-term FIRE progress.",
-  "permissions": ["storage"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -19,7 +23,10 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*"],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
       "all_frames": false,
       "exclude_matches": [
         "https://gemini.google.com/*",
@@ -40,8 +47,12 @@
         "https://shopping.google.com/*",
         "https://www.googleadservices.com/*"
       ],
-      "js": ["content.js"],
-      "css": ["styles.css"],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
       "run_at": "document_idle"
     }
   ],

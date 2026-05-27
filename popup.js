@@ -11,7 +11,8 @@ const HISTORICAL_ANN_RETURN = {
   BTC: 45.0,
   '0050': 9.5,
   '2330': 15.8,
-  TSM: 15.8,
+  MSFT: 12.0,
+  GOOGL: 12.0,
 };
 
 const POPUP_STR = {
@@ -28,7 +29,9 @@ const POPUP_STR = {
     loading: 'Loading…',
     unavailable: 'Unavailable',
     switchTitle: 'Enable on pages',
+    btnDashboard: 'View My FIRE Journey',
     footerSuffix: 'Road to FIRE Converter',
+    restoreWidget: 'Restore Widget',
     projectionHtml: (ticker, pct) =>
       `Estimated future value of a <strong>$1,000</strong> lump-sum today, using ${ticker}’s illustrative <strong>${pct}%</strong> historical annual return.`,
   },
@@ -45,7 +48,9 @@ const POPUP_STR = {
     loading: '載入中…',
     unavailable: '無法取得報價',
     switchTitle: '在網頁上啟用',
+    btnDashboard: '查看我的財富自由進度',
     footerSuffix: 'Road to FIRE 價值換算',
+    restoreWidget: '恢復顯示浮動小視窗',
     projectionHtml: (ticker, pct) =>
       `假設今日一次投入約 <strong>$1,000</strong>，依 ${ticker} 之<strong>歷史年化約 ${pct}%</strong>粗估未來參考金額（非預測）。`,
   },
@@ -117,6 +122,8 @@ const priceDisplay = document.getElementById('currentPrice');
 const tickerDisplay = document.getElementById('activeTickerDisplay');
 const futureValueDisplay = document.getElementById('futureValueDisplay');
 const impactSub = document.getElementById('impactSub');
+const btnDashboardText = document.getElementById('i18n-btn-dashboard');
+const viewDashboardBtn = document.getElementById('viewDashboard');
 const footer = document.getElementById('extFooter');
 
 let priceLoading = false;
@@ -143,12 +150,33 @@ function applyPopupI18n() {
   el('i18n-chart-title', t.chartTitle);
   if (customTickerInput) customTickerInput.placeholder = t.placeholder;
   if (applyBtn) applyBtn.textContent = t.apply;
+  if (btnDashboardText) btnDashboardText.textContent = t.btnDashboard;
   const sw = document.getElementById('i18n-switch-wrap');
   if (sw) sw.title = t.switchTitle;
 
   try {
     const v = chrome.runtime.getManifest().version;
-    if (footer && v) footer.textContent = `${t.footerSuffix} · v${v}`;
+    if (footer && v) {
+      footer.innerHTML = `${t.footerSuffix} · v${v} · <a href="#" id="restoreWidgetLink" style="color:var(--accent);text-decoration:none;font-weight:500;">${t.restoreWidget}</a>`;
+      const link = document.getElementById('restoreWidgetLink');
+      if (link) {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+              chrome.tabs.sendMessage(tabs[0].id, { action: 'forceShowWidget' }, () => {
+                if (chrome.runtime.lastError) {
+                  link.textContent = popupLocale === 'zh' ? '請重新整理此網頁！' : 'Please refresh page!';
+                  link.style.color = '#d93025';
+                } else {
+                  window.close();
+                }
+              });
+            }
+          });
+        });
+      }
+    }
   } catch (_) {}
 }
 
@@ -349,11 +377,11 @@ function changeTicker(symbol) {
       // Store resolved stock name (e.g. 'Taiwan Semiconductor Manufacturing Co.' → show as display name)
       stockName = res.name || '';
       updateUI(false);
-      chrome.storage.local.set({ settings });
+      chrome.storage.sync.set({ settings });
     } else {
       stockName = '';
       updateUI('error');
-      chrome.storage.local.set({ settings });
+      chrome.storage.sync.set({ settings });
     }
   });
 
@@ -367,7 +395,7 @@ function changeTicker(symbol) {
 }
 
 function boot() {
-  chrome.storage.local.get(['settings'], (result) => {
+  chrome.storage.sync.get(['settings'], (result) => {
     detectPopupLocale((loc) => {
       popupLocale = loc === 'zh' ? 'zh' : 'en';
       applyPopupI18n();
@@ -409,5 +437,9 @@ customTickerInput.addEventListener('keydown', (e) => {
 
 mainToggle.addEventListener('change', (e) => {
   settings.enabled = e.target.checked;
-  chrome.storage.local.set({ settings });
+  chrome.storage.sync.set({ settings });
+});
+
+document.getElementById('viewDashboard').addEventListener('click', () => {
+  chrome.runtime.sendMessage({ action: 'openDashboard' });
 });

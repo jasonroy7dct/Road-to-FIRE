@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Road to FIRE</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Top Nav -->
+  <nav class="topnav">
+    <div class="topnav-inner">
+      <div class="nav-left">
+        <img src="icon128.png" alt="jDCT" class="nav-logo">
+        <span class="nav-title" id="page-title">Road to FIRE</span>
+      </div>
+      <span class="nav-badge" id="badge-text">v3.0</span>
+    </div>
+  </nav>
+
+  <!-- Page -->
+  <main class="container">
+    <div class="page-head">
+      <h1 id="page-heading">Overview</h1>
+      <p id="page-subtitle">Track your savings journey in real time.</p>
+    </div>
+
+    <!-- Metrics -->
+    <div class="metrics">
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label" id="total-usd-label">Capital Preserved</span>
+        </div>
+        <div class="metric-value" id="total-usd">$0.00</div>
+        <div class="metric-delta positive" id="text-impact">↑ Growing</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-top">
+          <span class="metric-label" id="asset-label">VOO Equivalent</span>
+        </div>
+        <div class="metric-value accent" id="total-shares">0.0000</div>
+        <div class="recalc">
+          <div class="recalc-row">
+            <input type="text" id="recalc-input" placeholder="Ticker symbol" maxlength="16">
+            <button id="recalc-btn">Recalculate</button>
+          </div>
+          <div class="chips">
+            <button class="chip active" data-symbol="VOO">VOO</button>
+            <button class="chip" data-symbol="VTI">VTI</button>
+            <button class="chip" data-symbol="VT">VT</button>
+            <button class="chip" data-symbol="VXUS">VXUS</button>
+            <button class="chip" data-symbol="SPY">SPY</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card">
+      <div class="table-head">
+        <h2 id="nav-text-journey">Recent activity</h2>
+        <span class="table-count" id="history-count">0</span>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th id="th-date">Date</th>
+              <th id="th-store">Store</th>
+              <th id="th-item">Description</th>
+              <th id="th-amount" class="align-r">Amount</th>
+              <th id="th-gain" class="align-r">Gain</th>
+            </tr>
+          </thead>
+          <tbody id="history-list"></tbody>
+        </table>
+      </div>
+      <div id="empty-state" class="empty">
+        <p>No activity yet. Items you save will appear here.</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

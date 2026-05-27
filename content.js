@@ -58,6 +58,7 @@
       btnSave: 'I saved it for FIRE!',
       modalPriceMissing: 'We could not read a dollar amount on this page.',
       modalNoQuote: 'Could not load a live quote. Open the extension popup and try again.',
+      modalGrowthText: 'If you invest this <strong>{usd}</strong> instead, based on the historical {cagr}% return of {ticker}, it could grow to over <strong>{fv}</strong> in 30 years! Imagine that growth!',
     },
     zh: {
       badgeShares: '股',
@@ -74,12 +75,17 @@
       btnSave: '我忍住了！往財富自由路上！',
       modalPriceMissing: '此頁讀不到金額，無法換算。',
       modalNoQuote: '無法取得即時報價，請開啟擴充視窗重試。',
+      modalGrowthText: '若將這筆 <strong>{usd}</strong> 轉為投資，以 {ticker} 歷史年化報酬率 {cagr}% 計算，30 年後有機會成長至 <strong>{fv}</strong>！',
     },
   };
 
-  function getLang() {
+  function getLangCode() {
     const lang = document.documentElement.lang || navigator.language || 'en';
-    return lang.toLowerCase().includes('zh') ? i18n.zh : i18n.en;
+    return lang.toLowerCase().includes('zh') ? 'zh' : 'en';
+  }
+
+  function getLang() {
+    return i18n[getLangCode()];
   }
 
   // --- Historical annual return rate lookup table ---
@@ -95,7 +101,8 @@
     BTC: 45.0,
     '0050': 9.5,
     '2330': 15.8,
-    TSM: 15.8,
+    MSFT: 12.0,
+    GOOGL: 12.0,
   };
   function annReturnLookupKey(ticker) {
     return String(ticker || '')
@@ -179,6 +186,9 @@
     if (badgeTooltipUiAttached) return;
     badgeTooltipUiAttached = true;
 
+    let activeBadge = null;
+    let tipHideTimeout = null;
+
     function layoutVooTooltip(badge) {
       const tip = badge.querySelector('.voo-tooltip');
       if (!tip) return;
@@ -189,10 +199,15 @@
       const th = tip.offsetHeight || 100;
       let left = br.left + br.width / 2 - tw / 2;
       left = Math.max(margin, Math.min(left, window.innerWidth - tw - margin));
+      
       let top = br.bottom + margin;
+      let placement = 'bottom';
       if (top + th > window.innerHeight - margin) {
         top = Math.max(margin, br.top - th - margin);
+        placement = 'top';
       }
+      tip.setAttribute('data-placement', placement);
+
       tip.style.left = `${Math.round(left)}px`;
       tip.style.top = `${Math.round(top)}px`;
     }
@@ -202,24 +217,48 @@
     }
 
     document.addEventListener(
-      'pointerenter',
+      'pointerover',
       (ev) => {
         const badge = ev.target.closest?.('.voo-badge');
-        if (!badge || !badge.contains(ev.target)) return;
-        badge.setAttribute('data-voo-tip-active', '1');
-        requestAnimationFrame(() => requestAnimationFrame(() => layoutVooTooltip(badge)));
+        const prevBadge = ev.relatedTarget?.closest?.('.voo-badge');
+
+        // Only trigger when entering the badge boundary from the outside
+        if (badge && badge !== prevBadge) {
+          if (tipHideTimeout) {
+            clearTimeout(tipHideTimeout);
+            tipHideTimeout = null;
+          }
+
+          if (activeBadge && activeBadge !== badge) {
+            activeBadge.removeAttribute('data-voo-tip-active');
+            activeBadge = null;
+          }
+
+          activeBadge = badge;
+          // Layout synchronously first so it renders at the correct position immediately
+          layoutVooTooltip(badge);
+          badge.setAttribute('data-voo-tip-active', '1');
+        }
       },
       true,
     );
 
     document.addEventListener(
-      'pointerleave',
+      'pointerout',
       (ev) => {
         const badge = ev.target.closest?.('.voo-badge');
-        if (!badge) return;
-        const to = ev.relatedTarget;
-        if (to && badge.contains(to)) return;
-        badge.removeAttribute('data-voo-tip-active');
+        const nextBadge = ev.relatedTarget?.closest?.('.voo-badge');
+
+        // Only trigger when leaving the badge boundary entirely
+        if (badge && badge !== nextBadge) {
+          if (tipHideTimeout) clearTimeout(tipHideTimeout);
+          tipHideTimeout = setTimeout(() => {
+            badge.removeAttribute('data-voo-tip-active');
+            if (activeBadge === badge) {
+              activeBadge = null;
+            }
+          }, 180);
+        }
       },
       true,
     );
@@ -247,11 +286,36 @@
   // --- Major US E-commerce Configurations (dedicated selectors preferred; HTTPS shopping sites not listed can still use generic scanning) ---
   const schemaPrice = (el) => el.getAttribute('content') || el.getAttribute('aria-label') || el.innerText;
   const siteConfigs = [
-    { domain: 'amazon.com', priceSelector: '.a-price:not(.a-text-price):not([data-voo-processed])', priceExtract: (el) => el.querySelector('.a-offscreen')?.innerText, cartButtons: '#add-to-cart-button, #buy-now-button, [name="proceedToRetailCheckout"], #rcx-checkout-submit-buttons input, input[name="submit.add-to-cart"]' },
-    { domain: 'walmart.com', priceSelector: '[itemprop="price"]:not([data-voo-processed])', priceExtract: (el) => el.getAttribute('content') || el.innerText, cartButtons: '[data-automation-id="add-to-cart"], button[data-automation-id="checkout"], [data-automation-id="fulfillmentATC"]' },
-    { domain: 'target.com', priceSelector: '[data-test="product-price"]:not([data-voo-processed])', priceExtract: (el) => el.innerText, cartButtons: '[data-test="shippingButton"], [data-test="checkout-button"], [data-test="addToCartButton"]' },
-    { domain: 'bestbuy.com', priceSelector: '.priceView-customer-price span[aria-hidden="true"]:not([data-voo-processed]), .priceView-layout-large .priceView-customer-price:not([data-voo-processed])', priceExtract: (el) => el.innerText, cartButtons: '.add-to-cart-button, .checkout-buttons button, [data-test-id="add-to-cart"], [data-test-id="checkout-button"]' },
-    { domain: 'apple.com', priceSelector: '.rc-prices-fullprice:not([data-voo-processed]), .as-price-currentprice:not([data-voo-processed])', priceExtract: (el) => el.innerText, cartButtons: '.add-to-cart, button[name="add-to-cart"], .rc-summary-button' },
+    {
+      domain: 'amazon.com',
+      priceSelector: '.a-price:not(.a-text-price):not([data-voo-processed]), #corePrice_feature_div .a-price:not([data-voo-processed]), #apex_offerDisplay_desktop .a-price:not([data-voo-processed])',
+      priceExtract: (el) => el.querySelector('.a-offscreen')?.innerText || el.innerText,
+      cartButtons: '#add-to-cart-button, #buy-now-button, [name="proceedToRetailCheckout"], #rcx-checkout-submit-buttons input, input[name="submit.add-to-cart"], #checkout-button, .checkout-button, [name="proceedToRetailCheckout"], [data-action="add-to-wishlist"] ~ button',
+    },
+    {
+      domain: 'walmart.com',
+      priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-automation="buybox-price"]:not([data-voo-processed]), [data-testid="price-wrap"]:not([data-voo-processed])',
+      priceExtract: (el) => el.getAttribute('content') || el.innerText,
+      cartButtons: '[data-automation-id="add-to-cart"], button[data-automation-id="checkout"], [data-automation-id="fulfillmentATC"], [data-testid="action-btn"], [data-automation-id="cta-btn"]',
+    },
+    {
+      domain: 'target.com',
+      priceSelector: '[data-test="product-price"]:not([data-voo-processed]), [data-test="@web/components/ProductCard/ProductCardVariantDefault"]:not([data-voo-processed])',
+      priceExtract: (el) => el.innerText,
+      cartButtons: '[data-test="shippingButton"], [data-test="checkout-button"], [data-test="addToCartButton"], [data-test="OurPicksATCButton"], button[class*="GreenButton"]',
+    },
+    {
+      domain: 'bestbuy.com',
+      priceSelector: '.priceView-customer-price span[aria-hidden="true"]:not([data-voo-processed]), .priceView-layout-large .priceView-customer-price:not([data-voo-processed]), [data-testid="customer-price"]:not([data-voo-processed])',
+      priceExtract: (el) => el.innerText,
+      cartButtons: '.add-to-cart-button, .checkout-buttons button, [data-button-state="ADD_TO_CART"], [data-testid="add-to-cart-button"], [data-testid="checkout-button"], .c-button-submit',
+    },
+    {
+      domain: 'apple.com',
+      priceSelector: '.rc-prices-fullprice:not([data-voo-processed]), .as-price-currentprice:not([data-voo-processed]), [data-autom="full-price"]:not([data-voo-processed])',
+      priceExtract: (el) => el.innerText,
+      cartButtons: '.add-to-cart, button[name="add-to-cart"], .rc-summary-button, [data-autom="add-to-cart"], [data-autom="proceed-to-checkout"], .button-cta',
+    },
     {
       domain: 'footlocker.com',
       priceSelector:
@@ -269,13 +333,45 @@
         '[data-testid="qa-cart-button"], [data-testid="qa-checkout-button"], [data-testid="add-to-cart-button"], [data-testid*="checkout" i], [data-testid*="bag" i], [data-testid*="submit" i], [data-testid*="place-order" i], [data-automation*="checkout" i], [data-e2e*="checkout" i], a[href*="/checkout"], a[href*="/cart"], a[href*="/bag"], [role="button"][data-testid*="checkout" i]',
     },
     { domain: 'ebay.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .x-price-primary span:not([data-voo-processed]), [data-testid="x-price-primary"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-testid="ux-call-to-action"], #binBtn_btn_1, .ux-call-to-action__button, [data-testid="x-atc-action"], [name="submit.buy"]' },
-    { domain: 'etsy.com', priceSelector: '[data-buy-box-region] [itemprop="price"]:not([data-voo-processed]), [data-selector="price-only"] .currency-value:not([data-voo-processed])', priceExtract: (el) => el.getAttribute('content') || el.innerText, cartButtons: '[data-buy-box-region] button[type="submit"], [data-listing-id] form button[type="submit"], .wt-btn--filled' },
+    {
+      domain: 'etsy.com',
+      priceSelector: '[data-buy-box-region] [itemprop="price"]:not([data-voo-processed]), .wt-text-body-01.wt-text-bold:not([data-voo-processed]), [data-selector="price-only"] .currency-value:not([data-voo-processed])',
+      priceExtract: (el) => el.getAttribute('content') || el.innerText,
+      cartButtons: '[data-buy-box-region] button[type="submit"], [data-listing-id] form button[type="submit"], .wt-btn--filled, [data-testid="buy-now-btn"]',
+    },
     { domain: 'kingstone.com.tw', priceSelector: '.price_box .price b, .basicunit.price1 b, .basic_price b, .basic_price .price, .price_sale', priceExtract: (el) => el.innerText, cartButtons: '.btn_addcart, .btn_buy, .立即結帳, .加入購物車' },
-    { domain: 'homedepot.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .price__numbers:not([data-voo-processed]), [data-price]:not([data-voo-processed])', priceExtract: (el) => el.getAttribute('content') || el.getAttribute('data-price') || el.innerText, cartButtons: 'button[data-automation-id="add-to-cart-button"], [data-automation-id="add-to-cart"], #root_primary_btn, .payment__cta' },
+    {
+      domain: 'nordstrom.com',
+      priceSelector: '.price:not([data-voo-processed]), [data-testid*="price"]:not([data-voo-processed])',
+      priceExtract: (el) => el.innerText,
+      cartButtons: '[data-testid="checkout-button"], [data-testid="add-to-bag"]',
+    },
+    {
+      domain: 'shopee.tw',
+      priceSelector: '._3e_UQT:not([data-voo-processed]), ._2GchKS:not([data-voo-processed]), [class*="shopee-price"]:not([data-voo-processed])',
+      priceExtract: (el) => el.innerText,
+      cartButtons: '.btn-solid-primary, button.shopee-button-solid, [class*="shopee-button-solid"]',
+    },
+    {
+      domain: 'homedepot.com',
+      priceSelector: '[itemprop="price"]:not([data-voo-processed]), .price__numbers:not([data-voo-processed]), [data-price]:not([data-voo-processed]), [data-testid="price"]:not([data-voo-processed])',
+      priceExtract: (el) => el.getAttribute('content') || el.getAttribute('data-price') || el.innerText,
+      cartButtons: 'button[data-automation-id="add-to-cart-button"], [data-automation-id="add-to-cart"], #root_primary_btn, .payment__cta, [data-testid="atc-button"]',
+    },
     { domain: 'lowes.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-selector="product-price"]:not([data-voo-processed]), .art-pd-wrapper [itemprop="price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-selector="add-to-cart"], #addToCart, button[data-selector="add-to-cart"], [href*="checkout"]' },
-    { domain: 'costco.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .price:not([data-voo-processed]), [automation-id*="Price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '#add-to-cart, [data-testid="add-to-cart"], [data-automation*="add-to-cart" i], input[value*="Add to Cart" i]' },
+    {
+      domain: 'costco.com',
+      priceSelector: '[itemprop="price"]:not([data-voo-processed]), .price:not([data-voo-processed]), [automation-id*="Price"]:not([data-voo-processed]), .your-price:not([data-voo-processed])',
+      priceExtract: schemaPrice,
+      cartButtons: '#add-to-cart, [data-testid="add-to-cart"], [data-automation*="add-to-cart" i], input[value*="Add to Cart" i], button[type="submit"][class*="button" i]',
+    },
     { domain: 'samsclub.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-automation-id*="price" i]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-automation-id="addToCart"], button[data-tl-id*="add-to-cart" i], [data-testid="add-to-cart"]' },
-    { domain: 'wayfair.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-enzyme-id="PriceDisplay"]:not([data-voo-processed]), [data-name="Pricing"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-name="AddToCartButton"], [data-enzyme-id="AddToCartButton"], #bd-add-to-cart-button, [data-testid="atcButton"]' },
+    {
+      domain: 'wayfair.com',
+      priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-enzyme-id="PriceDisplay"]:not([data-voo-processed]), [data-name="Pricing"]:not([data-voo-processed]), [data-testid="structured-price"]:not([data-voo-processed])',
+      priceExtract: schemaPrice,
+      cartButtons: '[data-name="AddToCartButton"], [data-enzyme-id="AddToCartButton"], #bd-add-to-cart-button, [data-testid="atcButton"], button[class*="AddToCartButton" i]',
+    },
     { domain: 'kohls.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .pdpprice-row-main-text:not([data-voo-processed]), [data-testid="pdp-price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '#addtobagButton, [data-testid="add-to-bag-button"], .checkout-button, [name="checkout"]' },
     { domain: 'macys.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-auto="price"]:not([data-voo-processed]), .price-large:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '#bag-add-cta, [data-test-id="add-to-bag"], .checkout-cta, [data-auto="checkout"]' },
     { domain: 'nordstrom.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-testid="product-price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-testid="add-to-bag-button"], [data-testid="checkout-button"], button[data-modal*="AddToBag" i]' },
@@ -283,12 +379,25 @@
     { domain: 'chewy.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-testid="price"]:not([data-voo-processed]), .kibocommerce-price:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-testid="add-to-cart"], #buy-now-button, [href*="/checkout"]' },
     { domain: 'petco.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-test="product-price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-test="add-to-cart"], button[data-track*="add-to-cart" i], #checkout-button-bottom' },
     { domain: 'zappos.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .price:not([data-voo-processed]), [data-testid="price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '#add-to-cart-button, [data-testid="add-to-cart"], .cart-button' },
-    { domain: 'newegg.com', priceSelector: '.price-current:not([data-voo-processed]), [itemprop="price"]:not([data-voo-processed]), .price-current-label + span:not([data-voo-processed])', priceExtract: (el) => el.querySelector('.price-current strong')?.innerText || schemaPrice(el), cartButtons: '.btn-primary[title*="Add" i], #ProductBuy .btn-primary, [href*="shopping-cart"], .item-actions-checkout' },
+    {
+      domain: 'newegg.com',
+      priceSelector: '.price-current:not([data-voo-processed]), [itemprop="price"]:not([data-voo-processed]), .price-current-num:not([data-voo-processed])',
+      priceExtract: (el) => {
+        const strong = el.querySelector('.price-current strong, strong');
+        return strong ? strong.innerText : (schemaPrice(el));
+      },
+      cartButtons: '.btn-primary[title*="Add" i], #ProductBuy .btn-primary, [href*="shopping-cart"], .item-actions-checkout, [id*="add-to-cart" i]',
+    },
     { domain: 'bhphotovideo.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .topListingQty_price:not([data-voo-processed]), .pricesContainer:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '#submitCartButton, #addToCartPlaceholder a, .bottomBuyButtons button, [data-selenium="addToCartButton"]' },
     { domain: 'adorama.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .price:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '#addToCartBtn, .buy-section button, [href*="shopping-cart"]' },
     { domain: 'gamestop.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .actual-price:not([data-voo-processed]), [data-testid="price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '.add-to-cart, [data-testid="add-to-cart"], #btnAtc, button[aria-label*="Add to cart" i]' },
     { domain: 'ulta.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-test="price"]:not([data-voo-processed]), .ProductPricing:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-test="add-to-bag"], #AddToBag, .CheckoutButtons button, [href*="/bag"]' },
-    { domain: 'sephora.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-comp*="Price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-at*="add-to-basket" i], button[data-comp*="AddToBasket"], [href*="/basket"]' },
+    {
+      domain: 'sephora.com',
+      priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-comp*="Price"]:not([data-voo-processed]), [data-at="price_product_detail"]:not([data-voo-processed])',
+      priceExtract: schemaPrice,
+      cartButtons: '[data-at*="add-to-basket" i], button[data-comp*="AddToBasket"], [href*="/basket"], [data-at="add_to_basket_button"]',
+    },
     { domain: 'rei.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-ui="product-price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-ui="add-to-cart-button"], #add-to-cart, [href*="/shopping-cart"]' },
     { domain: 'dickssportinggoods.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-testid="product-price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-testid="add-to-cart"], #add-to-cart-button, [href*="/checkout"]' },
     { domain: 'academy.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-testid="product-price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-testid="add-to-cart"], #add-to-cart, .checkout-cta' },
@@ -298,7 +407,12 @@
     { domain: 'urbanoutfitters.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .c-pwa__price:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-add-to-bag], .o-add-to-bag, [href*="/checkout"]' },
     { domain: 'hm.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .product-item-price-full:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-add-to-cart], button[data-testid="add-to-cart"], .itembuttons-addtocart' },
     { domain: 'uniqlo.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .fr-ec-price:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-test="button"], #product-addtocart, .add-to-cart-button' },
-    { domain: 'shein.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .productPrice:not([data-voo-processed]), .original-price:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '.cart-panel-checkout-btn, .product-intro__add-btn, button[s-heid*="add-to-cart" i]' },
+    {
+      domain: 'shein.com',
+      priceSelector: '[itemprop="price"]:not([data-voo-processed]), [class*="priceInfo" i]:not([data-voo-processed]), [class*="promotion-price" i]:not([data-voo-processed])',
+      priceExtract: (el) => el.getAttribute('content') || el.innerText,
+      cartButtons: '[class*="add-to-bag" i], [class*="btn-add" i], .product-intro__add-btn, button[s-heid*="add-to-cart" i], [href*="/cart"]',
+    },
     { domain: 'lenovo.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .saleprice:not([data-voo-processed]), .pricing-current-price:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '.button_called_add_to_cart, [data-testid="addToCart"], #button-cart-main' },
     { domain: 'dell.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), [data-testid="finalPrice"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-testid="addToCartButton"], #addToCartButton, .dds__button--add-to-cart' },
     { domain: 'hp.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .price:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-add-to-cart], #addToCart, button[data-track*="add to cart" i]' },
@@ -339,7 +453,7 @@
         if (c && /^\d/.test(c)) return c;
         return el.innerText;
       },
-      cartButtons: '#buy_yes, .addCart, [class*="btn-cart" i], [class*="buy" i], a[href*="/cart"]',
+      cartButtons: '#buy_yes, .addCart, [class*="btn-cart" i], [class*="buy" i], a[href*="/cart"], button[id*="checkout" i], a[id*="checkout" i], .checkoutBtn',
     },
     {
       domain: 'pchome.com.tw',
@@ -355,7 +469,7 @@
       domain: 'shopee.tw',
       priceSelector: '[class*="price" i]:not([data-voo-processed]), [data-sqe="name"]:not([data-voo-processed])',
       priceExtract: (el) => el.innerText,
-      cartButtons: '[class*="add-to-cart" i], button[class*="buy" i]',
+      cartButtons: '[class*="add-to-cart" i], button[class*="buy" i], .cart-page-footer__checkout, button.btn-solid-primary',
     },
     {
       domain: 'eslite.com',
@@ -406,7 +520,6 @@
     { domain: 'airbnb.com', priceSelector: '._1y74zjx:not([data-voo-processed]), [data-testid="price-label"]:not([data-voo-processed])', priceExtract: (el) => el.innerText, cartButtons: '[data-testid="homes-pdp-cta-btn"], button[type="submit"]' },
     { domain: 'expedia.com', priceSelector: '[data-test-id="price-column"]:not([data-voo-processed]), .uitk-text-emphasis:not([data-voo-processed])', priceExtract: (el) => el.innerText, cartButtons: '[data-testid="submit-button"], button[type="submit"]' },
     { domain: 'walgreens.com', priceSelector: '.price__container:not([data-voo-processed]), [itemprop="price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '#wag-cart-btn, #wag-buy-now-btn' },
-    { domain: 'walgreens.com', priceSelector: '.price__container:not([data-voo-processed]), [itemprop="price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '#wag-cart-btn, #wag-buy-now-btn' },
     // --- Luxury, Gaming & Niche Additions ---
     { domain: 'steampowered.com', priceSelector: '.game_purchase_price:not([data-voo-processed]), .discount_final_price:not([data-voo-processed])', priceExtract: (el) => el.innerText, cartButtons: 'a[href*="cart/add"], .btn_addtocart' },
     { domain: 'farfetch.com', priceSelector: '[data-testid="price"]:not([data-voo-processed]), [itemprop="price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-testid="add-to-bag"], [data-testid*="checkout" i]' },
@@ -414,11 +527,21 @@
     { domain: 'lululemon.com', priceSelector: '[data-testid="price"]:not([data-voo-processed]), .price-17n59:not([data-voo-processed])', priceExtract: (el) => el.innerText, cartButtons: '[data-testid="add-to-bag-button"], #pdp-add-to-bag' },
     { domain: 'iherb.com', priceSelector: '.product-price:not([data-voo-processed]), #product-price:not([data-voo-processed])', priceExtract: (el) => el.innerText, cartButtons: '[data-testid="add-to-cart"], .add-to-cart' },
     { domain: 'coupang.com', priceSelector: '.total-price:not([data-voo-processed]), .price-value:not([data-voo-processed])', priceExtract: (el) => el.innerText, cartButtons: '.prod-buy-btn, .prod-cart-btn' },
+    { domain: 'rakuten.com.tw', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .price-value:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-testid="add-to-cart"], .add-to-cart, .buy-now' },
+    { domain: 'mykuji.com.tw', priceSelector: '.price:not([data-voo-processed]), [class*="price" i]:not([data-voo-processed])', priceExtract: (el) => el.innerText, cartButtons: '.add-to-cart, .buy-now, button[type="submit"]' },
+    { domain: 'shopify.com', priceSelector: '[class*="price" i]:not([data-voo-processed]), [itemprop="price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[name="add"], button[type="submit"], [href*="checkout"]' },
+    // --- Additional US Platforms ---
+    { domain: 'instacart.com', priceSelector: '[data-testid="item-price"]:not([data-voo-processed]), [data-testid="product-price"]:not([data-voo-processed])', priceExtract: (el) => el.innerText, cartButtons: '[data-testid="go-to-checkout"], button[data-testid*="checkout" i], [data-testid="place-order-button"]' },
+    { domain: 'kroger.com', priceSelector: '[data-testid="cart-item-price"]:not([data-voo-processed]), .kds-Price:not([data-voo-processed]), [itemprop="price"]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-testid="CartItemsCheckout"], button[data-testid="submit-button"], [data-testid="checkout-button"]' },
+    { domain: 'cvs.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .product-price:not([data-voo-processed]), [class*="priceBlock" i]:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '.add-to-cart-button, [data-qa="add-to-cart"], [href*="/checkout"]' },
+    { domain: 'myprotein.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .productPrice_price:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-action="atb"], #add-to-basket, button[type="submit"]' },
+    { domain: 'groupon.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .deal-price:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-bhw="buy-button"], .buy-btn, button[type="submit"]' },
+    { domain: 'rakuten.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .price:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '.add-to-cart, .buy-now, [href*="/checkout"]' },
   ];
 
   /** Do not include global submit: will accidentally block "send verification code / login" forms. */
   const genericCartButtonsCore =
-    'button[name="add"], button[name="checkout"], .add-to-cart, #add-to-cart, [aria-label*="checkout" i], [aria-label*="place order" i], [aria-label*="submit order" i], a[href*="checkout"], [data-testid*="add-to-cart" i], [data-testid*="AddToCart" i], [data-testid*="checkout" i], [data-testid*="place-order" i], [data-testid*="submit-order" i], [data-automation-id*="add-to-cart" i], [data-automation-id*="AddToCart" i], [data-automation*="checkout" i], button[data-add-to-cart], [aria-label*="add to cart" i], [aria-label*="加入購物車" i], [role="button"][data-testid*="checkout" i]';
+    'button[name="add"], button[name="checkout"], .add-to-cart, #add-to-cart, [aria-label*="checkout" i], [aria-label*="place order" i], [aria-label*="submit order" i], a[href*="checkout"], [data-testid*="add-to-cart" i], [data-testid*="AddToCart" i], [data-testid*="checkout" i], [data-testid*="place-order" i], [data-testid*="submit-order" i], [data-automation-id*="add-to-cart" i], [data-automation-id*="AddToCart" i], [data-automation*="checkout" i], button[data-add-to-cart], [aria-label*="add to cart" i], [aria-label*="加入購物車" i], [aria-label*="結帳" i], [role="button"][data-testid*="checkout" i]';
 
   function genericCartSelectorsForPage() {
     if (isLikelyCartOrCheckoutPath()) {
@@ -432,15 +555,26 @@
       const p = (location.pathname || '').toLowerCase();
       const h = (location.hash || '').toLowerCase();
       const q = (location.search || '').toLowerCase();
+      const host = (location.hostname || '').toLowerCase();
       return (
         p.includes('checkout') ||
         p.includes('cart') ||
         p.includes('bag') ||
         p.includes('basket') ||
         p.includes('payment') ||
+        p.includes('shoppingcart') ||
+        p.includes('/buy/') ||
+        p.includes('/purchase') ||
+        p.includes('/order/') ||
         h.includes('checkout') ||
         h.includes('cart') ||
-        q.includes('checkout=1')
+        q.includes('checkout=1') ||
+        q.includes('step=') || // covers multi-step checkout flows
+        // Taiwan-specific patterns
+        p.includes('purchaselist') ||
+        p.includes('cart.htm') ||
+        p.includes('cart.html') ||
+        p.includes('mycart')
       );
     } catch (_) {
       return false;
@@ -485,7 +619,7 @@
     if (!lower) return null;
     if (isOtpOrSmsButtonText(lower)) return null;
     const keywords =
-      /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|結帳|付款|下單|送出|前往結帳)/i;
+      /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i;
     const exclude =
       /^(edit|back|cancel|close|apply|remove|delete|sign in|log in|prev|previous|return to shop|keep shopping|save for later)$/i;
     if (exclude.test(lower) && lower.length < 40) return null;
@@ -512,7 +646,7 @@
   const USD_IN_TEXT_RE =
     /(?:US\$|\$|NT\$|TWD|¥|€|£)[\s\u00A0]*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)/gi;
 
-   const USD_NOISE_RE = /(month|mo\b|\/mo|\/ mo|interest-free|affirm|klarna|afterpay|zip|payments|starting at|installments|was\s*\$|list\s*price|msrp|comp\.\s*value|suggested|original|retail\s*price|previous\s*price|typical\s*price|basis\s*price)/i;
+  const USD_NOISE_RE = /(month|mo\b|\/mo|\/ mo|interest-free|affirm|klarna|afterpay|zip|payments|starting at|installments|was\s*\$|list\s*price|msrp|comp\.\s*value|suggested|original|retail\s*price|previous\s*price|typical\s*price|basis\s*price)/i;
 
   /** Extract $ amounts one by one, excluding current benchmark price; never use parseFloat on whole segment to avoid "$15" + "$638" becoming 15638. */
   function extractAllUsdValues(raw) {
@@ -521,7 +655,7 @@
     const out = [];
     for (const chunk of chunks) {
       if (USD_NOISE_RE.test(chunk)) continue;
-      
+
       let m;
       USD_IN_TEXT_RE.lastIndex = 0;
       while ((m = USD_IN_TEXT_RE.exec(chunk)) !== null) {
@@ -550,7 +684,7 @@
     return Math.max(...found);
   }
 
-  const NT_INLINE_RE = /NT\$[\s\u00A0]*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)/gi;
+  const NT_INLINE_RE = /(?:NT\$|TWD|\$|¥)[\s\u00A0]*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)/gi;
   const YUAN_INLINE_RE = /([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)\s*元/g;
   /** Matches standalone numbers that look like prices (e.g. bold sale price "675") */
   const BARE_TWD_NUM_RE = /(?:^|\s)([0-9]{2,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)(?:\s|$)/g;
@@ -564,7 +698,7 @@
     const out = [];
     for (const chunk of chunks) {
       if (TWD_NOISE_RE.test(chunk)) continue;
-      
+
       let m;
       NT_INLINE_RE.lastIndex = 0;
       while ((m = NT_INLINE_RE.exec(chunk)) !== null) {
@@ -700,7 +834,7 @@
 
   function estimateItemPriceNearClick(clickEl) {
     if (!(clickEl instanceof Element)) return null;
-    
+
     // Pass 1: Search up to 20 levels for a container with injected badges
     let w = clickEl;
     let badgeContainer = null;
@@ -733,17 +867,17 @@
           const by = r.top + r.height / 2;
           // Distance (minimum 1 to avoid division by zero)
           const dist = Math.max(1, Math.hypot(bx - clickX, by - clickY));
-          
+
           // Use parent element (the actual price element) to check font size and boldness
           const priceEl = b.parentElement;
           const st = window.getComputedStyle(priceEl);
           const fs = parseFloat(st.fontSize) || 16;
           const isBold = parseInt(st.fontWeight) >= 600 || st.fontWeight === 'bold' ? 1.2 : 1;
-          
+
           // Score combines font prominence and geometric proximity
           const fontScore = Math.pow(fs / 16, 2) * isBold;
-          const score = (fontScore * 100) / Math.pow(dist, 0.5); 
-          
+          const score = (fontScore * 100) / Math.pow(dist, 0.5);
+
           if (score > maxScore) {
             maxScore = score;
             bestBadge = b;
@@ -757,7 +891,7 @@
     w = clickEl;
     for (let i = 0; w && i < 15; w = w.parentElement, i++) {
       if (w.tagName === 'BODY' || w.tagName === 'HTML') break;
-      
+
       const clone = w.cloneNode(true);
       // Remove known noise sections from the clone before reading text (Protection, Warranty, Add-ons, etc.)
       clone.querySelectorAll('[class*="protection" i], [id*="protection" i], [class*="warranty" i], [id*="warranty" i], [class*="insurance" i], [class*="add-on" i], [class*="upsell" i], [class*="services" i], [class*="installation" i], [class*="AppleCare" i], [id*="AppleCare" i], [class*="GeekSquad" i], [id*="GeekSquad" i], .attach-warranty-display, #attach-warranty-display, #atc-warranty-section, .a-section.a-spacing-none.a-padding-none, [class*="加購" i], [class*="加購價" i], [class*="安裝" i], [class*="保固" i], [class*="保險" i]').forEach(n => n.remove());
@@ -829,7 +963,7 @@
         if (!priceLikelyVisible(el)) return;
         if (priceInAddonSection(el)) return;
         if (el.querySelector?.('.voo-badge')) return;
-        
+
         const st = window.getComputedStyle(el);
         if (st.textDecoration && st.textDecoration.includes('line-through')) return;
 
@@ -946,7 +1080,7 @@
     for (const el of els) {
       if (!skipVisibility && !priceLikelyVisible(el)) continue;
       if (priceInAddonSection(el)) continue;
-      
+
       const st = window.getComputedStyle(el);
       // Skip prices with strikethrough (Original/MSRP)
       if (st.textDecoration && st.textDecoration.includes('line-through')) continue;
@@ -964,7 +1098,7 @@
       // if this is the main price element.
       const parentText = el.parentElement ? (el.parentElement.innerText || el.parentElement.textContent || '').slice(0, 300) : '';
       if (parentText.length < 250 && PROMO_REGEX.test(parentText)) continue;
-      
+
       const val = extractShopAmountFromString(text);
       const minP = isTaiwanContext() ? MIN_DISPLAY_TWD : MIN_DISPLAY_USD;
       if (val == null || val < minP) continue;
@@ -1041,6 +1175,7 @@
           observeDOM();
           setupInterceptor();
           setupBadgeTooltipUi();
+          setupFloatingWidget();
           scheduleScan();
           return;
         }
@@ -1048,23 +1183,234 @@
         observeDOM();
         setupInterceptor();
         setupBadgeTooltipUi();
+        setupFloatingWidget();
         scheduleScan();
       });
     });
   }
 
+  // ============================================================
+  // Floating Widget — Premium Persistent Icon + Panel
+  // ============================================================
+  let widgetPanelVisible = false;
+  let widgetAutoShown = false;
+
+  function setupFloatingWidget() {
+    if (document.getElementById('voo-widget-btn')) return;
+    renderWidget();
+  }
+
+  function renderWidget() {
+    const lang = getLang();
+    const isZh = lang === i18n.zh;
+
+    // --- Floating button (always visible unless hidden) ---
+    const btn = document.createElement('div');
+    btn.id = 'voo-widget-btn';
+    btn.setAttribute('role', 'button');
+    btn.setAttribute('tabindex', '0');
+
+    // Minimal j + flame on navy (flame ignites on hover via CSS)
+    btn.innerHTML = `
+    <svg class="voo-widget-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path class="flame" d="M24 6C24 6 20 12 20 15.5C20 17.7 21.8 19.5 24 19.5C26.2 19.5 28 17.7 28 15.5C28 12 24 6 24 6Z" fill="#fff" opacity="0.85"/>
+      <text x="24" y="41" text-anchor="middle" fill="#fff" style="font-family:'Times New Roman',Times,serif;font-size:22px;">j</text>
+    </svg>`;
+
+    document.body.appendChild(btn);
+
+    // --- Panel ---
+    const panel = document.createElement('div');
+    panel.id = 'voo-widget-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'Road to FIRE');
+    panel.innerHTML = buildWidgetPanelHtml(lang, isZh);
+    document.body.appendChild(panel);
+
+    // Restore saved position
+    try {
+      const savedY = sessionStorage.getItem('voo_widget_y');
+      if (savedY) {
+        btn.style.bottom = 'auto';
+        btn.style.top = savedY + 'px';
+      }
+    } catch (_) { }
+
+    // --- Drag support (vertical only) ---
+    let isDragging = false, dragStartY = 0, btnStartTop = 0, hasMoved = false;
+
+    btn.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return; // Only left click/touch
+      isDragging = true;
+      hasMoved = false;
+      const rect = btn.getBoundingClientRect();
+      dragStartY = e.clientY;
+      btnStartTop = rect.top;
+      btn.setPointerCapture(e.pointerId);
+      btn.style.transition = 'none';
+    });
+
+    btn.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      const dy = e.clientY - dragStartY;
+      if (Math.abs(dy) > 4) hasMoved = true;
+      let newTop = btnStartTop + dy;
+      newTop = Math.max(8, Math.min(window.innerHeight - 70, newTop));
+      btn.style.bottom = 'auto';
+      btn.style.top = newTop + 'px';
+    });
+
+    const onDragEnd = (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      btn.style.transition = '';
+      try { sessionStorage.setItem('voo_widget_y', parseInt(btn.style.top)); } catch (_) { }
+      repositionPanel();
+    };
+    btn.addEventListener('pointerup', onDragEnd);
+    btn.addEventListener('pointercancel', onDragEnd);
+
+    btn.addEventListener('click', (e) => {
+      if (!hasMoved) {
+        widgetPanelVisible ? hideWidgetPanel() : showWidgetPanel(lang, isZh);
+      }
+    });
+
+    // Wire up panel actions
+    panel.addEventListener('click', (e) => {
+      const target = e.target;
+      const hideTrigger = target.id === 'voo-widget-hide-trigger' || target.closest('#voo-widget-hide-trigger');
+      const gearTrigger = target.id === 'voo-widget-gear' || target.closest('#voo-widget-gear');
+
+      if (hideTrigger) {
+        hideWidgetPanel();
+      }
+
+      if (target.id === 'voo-widget-dashboard' || target.closest('#voo-widget-dashboard')) {
+        const currentLang = getLangCode();
+        try {
+          chrome.runtime.sendMessage({ action: 'openDashboard', lang: currentLang });
+        } catch (err) {
+          console.warn('[FIRE] Extension context invalidated. Please refresh the page.');
+        }
+      }
+    });
+
+    // Auto-show once if on a shopping page
+    if (!widgetAutoShown) {
+      widgetAutoShown = true;
+      setTimeout(() => {
+        const hasBadges = document.querySelector('.voo-badge') != null;
+        if (isLikelyCartOrCheckoutPath() || hasBadges) {
+          showWidgetPanel(lang, isZh);
+          setTimeout(() => {
+            if (widgetPanelVisible && !panel.dataset.userInteracted) {
+              hideWidgetPanel();
+            }
+          }, 5000);
+        }
+      }, 1500);
+    }
+
+    panel.addEventListener('pointerdown', () => {
+      panel.dataset.userInteracted = '1';
+    });
+  }
+
+  function showWidgetCompletely() {
+    const btn = document.getElementById('voo-widget-btn');
+    if (btn) btn.style.display = 'flex';
+  }
+
+  function repositionPanel() {
+    const btn = document.getElementById('voo-widget-btn');
+    const panel = document.getElementById('voo-widget-panel');
+    if (!btn || !panel) return;
+    const btnRect = btn.getBoundingClientRect();
+    const panelHeight = 320;
+    let panelTop = btnRect.top - panelHeight - 12;
+    if (panelTop < 8) panelTop = btnRect.bottom + 12;
+    panel.style.top = panelTop + 'px';
+    panel.style.bottom = 'auto';
+    panel.style.right = '20px';
+  }
+
+  function buildWidgetPanelHtml(lang, isZh) {
+    const ticker = escapeHTML(appSettings.ticker || 'VOO');
+    const totalLabel = isZh ? '累積守住金額' : 'Capital Preserved';
+    const dashLabel = isZh ? '查看你守住了多少錢！' : 'View How much you saved!';
+    const hideLabel = isZh ? '關閉' : 'Close';
+    const tagline = isZh ? '每一次忍住，都是向財務自由更近一步！' : 'Every impulse resisted is a step closer to freedom';
+
+    return `
+      <div class="voo-wp-header">
+        <div class="voo-wp-header-left">
+          <div class="voo-wp-brand">Road to FIRE</div>
+          <div class="voo-wp-sub">${tagline}</div>
+        </div>
+        <div class="voo-wp-gear" id="voo-widget-gear" title="${isZh ? '設定' : 'Settings'}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </div>
+      </div>
+      <div class="voo-wp-body">
+        <div class="voo-wp-stat-card">
+          <div class="voo-wp-stat-top">
+            <span class="voo-wp-stat-label">${totalLabel}</span>
+            <span class="voo-wp-ticker-chip">${ticker}</span>
+          </div>
+          <span class="voo-wp-stat-value" id="voo-widget-total">—</span>
+        </div>
+        <a id="voo-widget-dashboard" class="voo-wp-cta" role="button" tabindex="0">
+          ${dashLabel}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;margin-left:4px"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+      <div class="voo-wp-footer">
+        <span id="voo-widget-hide-trigger" class="voo-wp-hide">${hideLabel}</span>
+      </div>
+    `;
+  }
+
+  function showWidgetPanel(lang, isZh) {
+    const panel = document.getElementById('voo-widget-panel');
+    const btn = document.getElementById('voo-widget-btn');
+    if (!panel) return;
+    widgetPanelVisible = true;
+    repositionPanel();
+    panel.classList.add('voo-wp-visible');
+    btn && btn.classList.add('voo-widget-btn-active');
+
+    chrome.storage.sync.get(['totalSavedUsd'], (res) => {
+      const total = res.totalSavedUsd || 0;
+      const el = document.getElementById('voo-widget-total');
+      if (el) {
+        el.textContent = total > 0 ? `$${total.toFixed(2)}` : (isZh ? '尚無記錄' : '$0.00');
+      }
+    });
+  }
+
+  function hideWidgetPanel() {
+    const panel = document.getElementById('voo-widget-panel');
+    const btn = document.getElementById('voo-widget-btn');
+    widgetPanelVisible = false;
+    panel && panel.classList.remove('voo-wp-visible');
+    btn && btn.classList.remove('voo-widget-btn-active');
+  }
+
+
+
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') clearTimeout(debounceTimer);
   });
 
-  chrome.storage.local.get(['settings'], (res) => {
+  chrome.storage.sync.get(['settings'], (res) => {
     if (res.settings) appSettings = { ...appSettings, ...res.settings };
     if (!appSettings.enabled) return;
     startExtension();
   });
 
   chrome.storage.onChanged.addListener((changes, namespace) => {
-    if (namespace !== 'local' || !changes.settings) return;
+    if (namespace !== 'sync' || !changes.settings) return;
     const prev = changes.settings.oldValue || {};
     const next = changes.settings.newValue || {};
     const wasOn = prev.enabled !== false;
@@ -1124,7 +1470,7 @@
     const shares = sharesRaw < 0.1 ? sharesRaw.toFixed(4) : sharesRaw < 1 ? sharesRaw.toFixed(3) : sharesRaw.toFixed(2);
     const annReturnRate = getAnnReturn(appSettings.ticker);
     const futureValue30Y = (adjustedPrice * Math.pow(1 + annReturnRate / 100, 30)).toFixed(2);
-    const returnColor = annReturnRate >= 0 ? '#1A73E8' : '#D93025';
+    const returnColor = annReturnRate >= 0 ? '#003358' : '#D93025';
     const returnSign = annReturnRate > 0 ? '+' : '';
     const pxFmt = formatBenchMoney(appSettings.price);
     const fvFmt = formatFVHighlight(futureValue30Y);
@@ -1194,19 +1540,19 @@
           for (let i = 0; i < priceEls.length; i++) {
             if (badgeCount() >= MAX_BADGES_PER_PAGE) break;
             const el = priceEls[i];
-            
+
             const st = window.getComputedStyle(el);
             if (st.textDecoration && st.textDecoration.includes('line-through')) continue;
-            
+
             const text = config.priceExtract(el);
             if (text) {
               const parentText = el.parentElement ? el.parentElement.innerText || el.parentElement.textContent : '';
               // Promo check is okay on parent, but noise (List Price) check should be more specific
               if (PROMO_REGEX.test(text.slice(0, 300)) || PROMO_REGEX.test((parentText || '').slice(0, 300))) continue;
-              
+
               // Only skip if the element text itself contains the noise word (e.g. "MSRP $19.99")
               if (USD_NOISE_RE.test(text.slice(0, 100)) || TWD_NOISE_RE.test(text.slice(0, 100))) continue;
-              
+
               const val = extractShopAmountFromString(text);
               if (val != null && val >= minShopAmount()) injectBadge(val, el);
             }
@@ -1294,7 +1640,7 @@
           const btnText = e.target.innerText.toLowerCase();
           const allowLooseBuy =
             isLikelyCartOrCheckoutPath() &&
-            (btnText.includes('cart') || btnText.includes('checkout') || btnText.includes('結帳'));
+            (btnText.includes('cart') || btnText.includes('checkout') || btnText.includes('結帳') || btnText.includes('買單') || btnText.includes('去買單'));
           if (allowLooseBuy || (btnText.includes('buy') && /(checkout|cart|bag|order)/i.test(window.location.pathname))) {
             target = e.target;
           }
@@ -1341,7 +1687,7 @@
           }
         }
 
-        showInterceptorModal(estUsd, target);
+        showInterceptorModal(estUsd, target, e.target);
       },
       true,
     );
@@ -1402,14 +1748,98 @@
       .replace(/\{shares\}/g, sharesStr)
       .replace(/\{ticker\}/g, safeDisplayTicker)
       .replace(/\{px\}/g, pxStr);
+
+    const cagr = historicalReturns[annReturnLookupKey(appSettings.ticker)] || 7.0;
+    const years = 30;
+    const fv = estUsd * Math.pow(1 + cagr / 100, years);
+    const growthText = (lang.modalGrowthText || '')
+      .replace(/\{usd\}/g, formatPageMoney(estUsd))
+      .replace(/\{cagr\}/g, cagr.toFixed(1))
+      .replace(/\{ticker\}/g, safeDisplayTicker)
+      .replace(/\{fv\}/g, formatPageMoney(fv));
+
     return `<div class="voo-modal-body">
       <div class="voo-modal-lead">${lead}</div>
       <div class="voo-modal-hero" aria-hidden="true"><span class="voo-hero-shares">≈ ${sharesStr}</span><span class="voo-hero-ticker">${safeDisplayTicker}</span></div>
+      
+      <div class="voo-modal-growth" aria-hidden="true">
+        <div id="voo-modal-chart-container" class="voo-chart-loading"></div>
+        <div class="voo-growth-text">${growthText}</div>
+      </div>
+
       <p class="voo-modal-foot">${lang.modalFoot}</p>
     </div>`;
   }
 
-  function showInterceptorModal(estUsd, originalButton) {
+  function renderSparkline(dataPoints) {
+    if (!dataPoints || dataPoints.length < 2) return '';
+    const w = 300, h = 60;
+    const minP = Math.min(...dataPoints.map(d => d.price));
+    const maxP = Math.max(...dataPoints.map(d => d.price));
+    const range = maxP - minP || 1;
+
+    let path = `M 0,${h - ((dataPoints[0].price - minP) / range) * h}`;
+    for (let i = 1; i < dataPoints.length; i++) {
+      const x = (i / (dataPoints.length - 1)) * w;
+      const y = h - ((dataPoints[i].price - minP) / range) * h;
+      path += ` L ${x},${y}`;
+    }
+
+    return `<svg viewBox="0 0 ${w} ${h}" class="voo-sparkline" preserveAspectRatio="none">
+        <path d="${path}" fill="none" stroke="#003358" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+  }
+
+  // ============================================================
+  // Toast & Celebration Helpers
+  // ============================================================
+
+  function showToast(message, type = 'fire', duration = 3200) {
+    const existing = document.querySelector('.voo-toast');
+    if (existing) existing.remove();
+    const t = document.createElement('div');
+    t.className = `voo-toast voo-toast-${type}`;
+    t.textContent = message;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
+    setTimeout(() => {
+      t.classList.remove('show');
+      setTimeout(() => t.remove(), 400);
+    }, duration);
+  }
+
+  function spawnEmojiRain(emojis) {
+    const count = 18;
+    for (let i = 0; i < count; i++) {
+      setTimeout(() => {
+        const el = document.createElement('span');
+        el.className = 'voo-emoji-particle';
+        el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        el.style.left = `${8 + Math.random() * 84}vw`;
+        el.style.top = `${10 + Math.random() * 50}vh`;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1600);
+      }, i * 60);
+    }
+  }
+
+  function showFireCelebration(lang) {
+    const isZh = (lang === i18n.zh);
+    const msg = isZh ? '🔥 太棒了！你守住了這筆錢！FIRE 之路更近一步！' : '🔥 Amazing! You kept the money — one step closer to FIRE!';
+    spawnEmojiRain(['🔥', '💰', '🚀', '🎉', '💎', '⭐']);
+    showToast(msg, 'fire', 3800);
+  }
+
+  function showEncouragementToast(lang) {
+    const isZh = (lang === i18n.zh);
+    const msgs = isZh
+      ? ['👍 沒關係！若無跳轉，請再次點選原本的結帳按鈕！', '😊 理性消費也是一種智慧！若未自動跳轉請再點一次！', '🤝 這次就買吧！若未自動跳轉請再點一次！']
+      : ["👍 That's okay! If it didn't redirect, please click the checkout button again.", "😊 Intentional spending is smart spending!", "🤝 Go for it! Click checkout again if needed."];
+    const msg = msgs[Math.floor(Math.random() * msgs.length)];
+    showToast(msg, 'ok', 4000);
+  }
+
+  function showInterceptorModal(estUsd, originalButton, exactTarget = null) {
     if (document.getElementById('voo-interceptor-modal')) return;
     const lang = getLang();
     const overlay = document.createElement('div');
@@ -1436,6 +1866,20 @@
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('active'));
 
+    try {
+      chrome.runtime.sendMessage({ action: 'getChartData', symbol: appSettings.ticker }, (res) => {
+        const chartContainer = overlay.querySelector('#voo-modal-chart-container');
+        if (chartContainer) {
+          if (res && res.ok && res.data && res.data.length > 0) {
+            chartContainer.innerHTML = renderSparkline(res.data);
+            chartContainer.classList.remove('voo-chart-loading');
+          } else {
+            chartContainer.style.display = 'none'; // Hide if failed
+          }
+        }
+      });
+    } catch (e) { }
+
     const focusEl = overlay.querySelector('#voo-btn-save');
     if (focusEl) focusEl.focus();
 
@@ -1455,39 +1899,112 @@
 
     overlay.querySelector('#voo-btn-save').addEventListener('click', () => {
       document.removeEventListener('keydown', onKey);
-      window.location.assign(benchmarkTickerExternalUrl(appSettings.ticker));
+      const currentLang = getLang(); // Capture synchronously before any async work
+      // Save data for the FIRE Dashboard
+      // Save data for the FIRE Dashboard using sync storage (follows the user's Google account)
+      chrome.storage.sync.get(['savedItems', 'totalSavedUsd'], (res) => {
+        const savedItems = res.savedItems || [];
+
+        // Normalize the amount to USD for consistent summation
+        const exRate = getExchangeMultiplier();
+        const currentCurrency = getPageCurrency();
+        // If it's TWD, we multiply by the exchange rate to get USD equivalent
+        const normalizedUsd = (currentCurrency === 'TWD') ? (Number(estUsd) * twdUsdRate) : Number(estUsd);
+
+        const totalSavedUsd = (res.totalSavedUsd || 0) + normalizedUsd;
+
+        const host = window.location.hostname;
+        let storeName = host.replace(/^www\./i, '').split('.')[0];
+        if (host.includes('amazon')) storeName = 'Amazon';
+        else if (host.includes('momo')) storeName = 'Momo';
+        else if (host.includes('pchome')) storeName = 'PChome';
+        else if (host.includes('shopee')) storeName = 'Shopee';
+        else if (host.includes('target')) storeName = 'Target';
+        else if (host.includes('walmart')) storeName = 'Walmart';
+        else if (host.includes('ebay')) storeName = 'eBay';
+        else if (host.includes('bestbuy')) storeName = 'BestBuy';
+        else storeName = storeName.charAt(0).toUpperCase() + storeName.slice(1);
+
+        savedItems.push({
+          timestamp: Date.now(),
+          amount: Number(estUsd), // Original amount on page
+          currency: currentCurrency,
+          usdAmount: normalizedUsd, // Normalized for global stats
+          ticker: appSettings.ticker,
+          shares: Number(estUsd) / Number(appSettings.price),
+          url: window.location.href,
+          title: document.title,
+          store: storeName
+        });
+
+        // Limit history to 1000 items to stay within chrome.storage.sync limits
+        if (savedItems.length > 1000) savedItems.shift();
+
+        // sync storage ensures data persists across devices (Google Account)
+        chrome.storage.sync.set({ savedItems, totalSavedUsd }, () => {
+          overlay.classList.remove('active');
+          setTimeout(() => {
+            overlay.remove();
+            showFireCelebration(currentLang);
+            setTimeout(() => {
+              chrome.runtime.sendMessage({ action: 'openDashboard' });
+              // Redirect the shopping page so user doesn't stay on the checkout page
+              const ticker = appSettings.ticker || 'VOO';
+              window.location.href = benchmarkTickerExternalUrl(ticker);
+            }, 800);
+          }, 160);
+        });
+      });
     });
 
     overlay.querySelector('#voo-btn-buy').addEventListener('click', () => {
+      const currentLang = getLang();
       overlay.classList.remove('active');
       setTimeout(() => {
         overlay.remove();
         document.removeEventListener('keydown', onKey);
+        showEncouragementToast(currentLang);
         bypassInterceptor = true;
 
-        const aTag = originalButton.closest('a[href]');
-        if (aTag) {
-          window.location.assign(aTag.href);
-        } else {
-          const form = originalButton.closest('form');
-          if (form && (originalButton.type === 'submit' || originalButton.tagName === 'BUTTON')) {
-            const tmp = document.createElement('input');
-            tmp.type = 'submit';
-            tmp.style.display = 'none';
-            form.appendChild(tmp);
-            tmp.click();
-            tmp.remove();
-          } else {
+        const el = exactTarget || originalButton;
+        if (el) {
+          setTimeout(() => {
+            // 1. Try form requestSubmit (robust for Amazon/Momo forms)
+            const form = el.closest('form');
+            if (form && (el.type === 'submit' || el.tagName === 'BUTTON')) {
+              if (typeof form.requestSubmit === 'function') {
+                try {
+                  form.requestSubmit(el);
+                  return;
+                } catch (e) { }
+              }
+            }
+
+            // 2. Comprehensive Pointer/Mouse sequence for React/Vue/Momo JS handlers
             const opts = { bubbles: true, cancelable: true, view: window };
-            originalButton.dispatchEvent(new MouseEvent('mousedown', opts));
-            originalButton.dispatchEvent(new MouseEvent('mouseup', opts));
-            originalButton.dispatchEvent(new MouseEvent('click', opts));
-          }
+            el.dispatchEvent(new PointerEvent('pointerdown', opts));
+            el.dispatchEvent(new MouseEvent('mousedown', opts));
+            el.dispatchEvent(new PointerEvent('pointerup', opts));
+            el.dispatchEvent(new MouseEvent('mouseup', opts));
+
+            // Dispatch standard click event before native .click() to satisfy strict listeners
+            el.dispatchEvent(new MouseEvent('click', opts));
+            el.click();
+
+            // 3. Forced Navigation Fallback for <a> tags
+            const a = el.closest('a');
+            if (a && a.href && !a.href.startsWith('javascript:')) {
+              setTimeout(() => {
+                if (window.location.href.split('#')[0] === a.href.split('#')[0]) {
+                  window.location.assign(a.href);
+                }
+              }, 400);
+            }
+          }, 120); // Increased delay to 120ms to allow React/Vue to reconcile DOM after modal removal
         }
 
-        setTimeout(() => {
-          bypassInterceptor = false;
-        }, 2500);
+        // We permanently bypass the interceptor for this page session since the user chose to buy
+        // They can just click the button again manually if our simulated click above didn't work.
       }, 160);
     });
   }
@@ -1510,7 +2027,7 @@
   function estimatePageUsdBestEffort() {
     if (!document.body) return null;
     const host = window.location.hostname;
-    
+
     // 1. Priority use of site-specific configurations
     const currentSite = siteConfigs.find(c => host.includes(c.domain));
     if (currentSite) {
@@ -1541,7 +2058,7 @@
           if (p && !isNaN(parseFloat(p))) return parseFloat(p);
         }
       }
-    } catch (_) {}
+    } catch (_) { }
 
     const scored = [];
     const push = (v, weight) => {
@@ -1559,17 +2076,17 @@
         if (!priceLikelyVisible(el)) return;
         // Ignore if in ad areas or navigation bars
         if (el.closest('header, footer, nav, aside, [class*="banner" i], [class*="promo" i], [class*="recommend" i], [class*="event" i], [class*="campaign" i], [id*="banner" i], [id*="promo" i]')) return;
-        
+
         const st = window.getComputedStyle(el);
         if (st.textDecoration && st.textDecoration.includes('line-through')) return;
 
         const t = el.getAttribute('content') || el.innerText || el.textContent || '';
         const parentText = el.parentElement ? el.parentElement.innerText || el.parentElement.textContent : '';
         if (PROMO_REGEX.test(t.slice(0, 300)) || PROMO_REGEX.test((parentText || '').slice(0, 300))) return;
-        
+
         const x = extractShopAmountFromString(t);
         if (x == null) return;
-        
+
         const r = el.getBoundingClientRect();
         const fs = parseFloat(st.fontSize) || 16;
         const isBold = parseInt(st.fontWeight) >= 600 || st.fontWeight === 'bold' ? 1.2 : 1;
@@ -1591,6 +2108,25 @@
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg && msg.action === 'forceShowWidget') {
+      chrome.storage.local.remove('voo_hide_until', () => {
+        try { sessionStorage.removeItem('voo_widget_hidden'); } catch (_) { }
+
+        if (!document.getElementById('voo-widget-btn')) {
+          renderWidget();
+        } else {
+          showWidgetCompletely();
+        }
+
+        setTimeout(() => {
+          const lang = getLang();
+          const isZh = lang === i18n.zh;
+          showWidgetPanel(lang, isZh);
+        }, 50);
+      });
+      sendResponse({ success: true });
+      return true;
+    }
     if (msg && msg.action === 'jdctGetPageUsd') {
       try {
         const usd = estimatePageUsdBestEffort();
