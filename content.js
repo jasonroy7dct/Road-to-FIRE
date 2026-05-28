@@ -2220,36 +2220,59 @@
         showEncouragementToast(currentLang);
         bypassInterceptor = true;
 
-        const el = originalButton || exactTarget;
-        if (el) {
+        const targetBtn = originalButton || exactTarget;
+        const exact = exactTarget || originalButton;
+        if (exact || targetBtn) {
           setTimeout(() => {
-            // 1. Comprehensive Pointer/Mouse sequence for React/Vue/Angular JS handlers
-            const opts = { bubbles: true, cancelable: true, view: window };
-            el.dispatchEvent(new PointerEvent('pointerdown', opts));
-            el.dispatchEvent(new MouseEvent('mousedown', opts));
-            el.dispatchEvent(new PointerEvent('pointerup', opts));
-            el.dispatchEvent(new MouseEvent('mouseup', opts));
+            const prepareEl = (el) => {
+              if (!el) return;
+              try {
+                if (el.disabled) el.disabled = false;
+                el.removeAttribute('disabled');
+                el.removeAttribute('aria-disabled');
+                el.classList.remove('disabled');
+                el.style.pointerEvents = 'auto';
+              } catch (_) {}
+            };
 
-            // Dispatch standard click event before native .click() to satisfy strict listeners
-            el.dispatchEvent(new MouseEvent('click', opts));
-            el.click();
+            prepareEl(exact);
+            prepareEl(targetBtn);
+
+            const clickEl = (el) => {
+              if (!el) return;
+              const opts = { bubbles: true, cancelable: true, view: window };
+              el.dispatchEvent(new PointerEvent('pointerdown', opts));
+              el.dispatchEvent(new MouseEvent('mousedown', opts));
+              el.dispatchEvent(new PointerEvent('pointerup', opts));
+              el.dispatchEvent(new MouseEvent('mouseup', opts));
+              el.dispatchEvent(new MouseEvent('click', opts));
+              el.click();
+            };
+
+            if (exact) clickEl(exact);
+            if (targetBtn && targetBtn !== exact) {
+              clickEl(targetBtn);
+            }
 
             // 2. Fallback form submission (for standard HTML forms)
-            const form = el.closest('form');
-            if (form && (el.type === 'submit' || el.tagName === 'BUTTON' || el.getAttribute('type') === 'submit')) {
-              if (typeof form.requestSubmit === 'function') {
-                try {
-                  form.requestSubmit(el);
-                } catch (e) { }
-              } else {
-                try {
-                  form.submit();
-                } catch (e) { }
+            const form = (targetBtn || exact)?.closest('form');
+            if (form) {
+              const submitEl = targetBtn || exact;
+              if (submitEl && (submitEl.type === 'submit' || submitEl.tagName === 'BUTTON' || submitEl.getAttribute('type') === 'submit')) {
+                if (typeof form.requestSubmit === 'function') {
+                  try {
+                    form.requestSubmit(submitEl);
+                  } catch (e) { }
+                } else {
+                  try {
+                    form.submit();
+                  } catch (e) { }
+                }
               }
             }
 
             // 3. Forced Navigation Fallback for <a> tags
-            const a = el.closest('a');
+            const a = (targetBtn || exact)?.closest('a');
             if (a && a.href && !a.href.startsWith('javascript:')) {
               setTimeout(() => {
                 if (window.location.href.split('#')[0] === a.href.split('#')[0]) {
@@ -2257,7 +2280,7 @@
                 }
               }, 400);
             }
-          }, 120); // Increased delay to 120ms to allow React/Vue to reconcile DOM after modal removal
+          }, 120);
         }
 
         // We permanently bypass the interceptor for this page session since the user chose to buy
