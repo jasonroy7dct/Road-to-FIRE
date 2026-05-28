@@ -700,8 +700,9 @@
     const strongKeywords = /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i;
 
     if (isTicketSite) {
+      const isSpecificButton = /(reserve tickets|confirm quantity)/i.test(lower);
       const isGenericTransition = isCart && /(continue|next|buy tickets|get tickets|checkout)/i.test(lower) && lower.length < 30;
-      if (!strongKeywords.test(lower) && !isGenericTransition) {
+      if (!strongKeywords.test(lower) && !isGenericTransition && !isSpecificButton) {
         return null;
       }
     } else {
@@ -1784,8 +1785,13 @@
           isTicketSite = lowerHost.includes('ticketmaster') || lowerHost.includes('seatgeek') || lowerHost.includes('stubhub');
         } catch (_) {}
 
-        if (isTicketSite && !isTicketCheckoutPage()) {
-          return;
+        if (isTicketSite) {
+          const btnEl = e.target.closest('button, a, [role="button"]');
+          const btnText = btnEl ? (btnEl.innerText || btnEl.getAttribute('aria-label') || '').toLowerCase().trim() : '';
+          const isTargetButton = btnText.includes('reserve tickets') || btnText.includes('confirm quantity');
+          if (!isTargetButton && !isTicketCheckoutPage()) {
+            return;
+          }
         }
 
         const useGeneric = !isTicketSite || isLikelyCartOrCheckoutPath();
@@ -1834,7 +1840,8 @@
           const isCart = isLikelyCartOrCheckoutPath();
           const strongKeywords = /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i;
           const isGenericTransition = isCart && /(continue|next|buy tickets|get tickets|checkout)/i.test(lower) && lower.length < 30;
-          if (!strongKeywords.test(lower) && !isGenericTransition) return;
+          const isSpecificButton = /(reserve tickets|confirm quantity)/i.test(lower);
+          if (!strongKeywords.test(lower) && !isGenericTransition && !isSpecificButton) return;
         }
         if (isVerificationOrAuthUi(target)) return;
         if (isOtpOrSmsButtonText(target.innerText || target.getAttribute('aria-label') || '')) return;
