@@ -918,6 +918,77 @@
     return null;
   }
 
+  function findQuantityNearClick(clickEl) {
+    if (!(clickEl instanceof Element)) return 1;
+
+    // 1. Search up the DOM tree (up to 10 levels) for select/input quantity elements
+    let w = clickEl;
+    for (let i = 0; w && i < 10; w = w.parentElement, i++) {
+      if (w.tagName === 'BODY' || w.tagName === 'HTML') break;
+
+      // Look for select dropdowns inside this ancestor
+      const selects = w.querySelectorAll('select');
+      for (const sel of selects) {
+        const name = (sel.name || '').toLowerCase();
+        const id = (sel.id || '').toLowerCase();
+        const className = (sel.className || '').toLowerCase();
+        const dataAction = (sel.getAttribute('data-action') || '').toLowerCase();
+        if (
+          name.includes('quantity') || name.includes('qty') ||
+          id.includes('quantity') || id.includes('qty') ||
+          className.includes('quantity') || className.includes('qty') ||
+          className.includes('quantity-select') || dataAction === 'a-select-quantity'
+        ) {
+          const val = parseInt(sel.value, 10);
+          if (!isNaN(val) && val > 0) return val;
+        }
+      }
+
+      // Look for input fields inside this ancestor
+      const inputs = w.querySelectorAll('input');
+      for (const inp of inputs) {
+        const name = (inp.name || '').toLowerCase();
+        const id = (inp.id || '').toLowerCase();
+        const className = (inp.className || '').toLowerCase();
+        const type = (inp.type || '').toLowerCase();
+        const role = (inp.getAttribute('role') || '').toLowerCase();
+        
+        const isQtyInput = 
+          name.includes('quantity') || name.includes('qty') ||
+          id.includes('quantity') || id.includes('qty') ||
+          className.includes('quantity') || className.includes('qty') ||
+          type === 'number' || role === 'spinbutton' ||
+          inp.getAttribute('aria-label')?.toLowerCase().includes('quantity') ||
+          inp.getAttribute('aria-label')?.toLowerCase().includes('數量') ||
+          inp.getAttribute('aria-label')?.toLowerCase().includes('数量');
+
+        if (isQtyInput) {
+          const val = parseInt(inp.value, 10);
+          if (!isNaN(val) && val > 0) return val;
+        }
+      }
+    }
+
+    // 2. Global fallback on the page for common selector patterns
+    const globalSelectors = [
+      'select#quantity', 'select[name="quantity"]', 'select[name="qty"]', 'select.quantity',
+      'select.a-native-select', 'select[data-action="a-select-quantity"]',
+      'input#quantity', 'input[name="quantity"]', 'input[name="qty"]', 'input.quantity',
+      'input.shopee-quantity-descriptor__input', 'input.qty-input'
+    ];
+    for (const selStr of globalSelectors) {
+      try {
+        const el = document.querySelector(selStr);
+        if (el) {
+          const val = parseInt(el.value, 10);
+          if (!isNaN(val) && val > 0) return val;
+        }
+      } catch (_) {}
+    }
+
+    return 1;
+  }
+
   /** Intercept checkout: pick "shopping amount-like" numbers from badges on page, excluding incorrect benchmark prices and obvious outliers. */
   function pickCheckoutUsdFromBadges(amounts) {
     const arr = amounts.filter((n) => Number.isFinite(n) && n > 0);
@@ -1674,10 +1745,12 @@
         }
 
         let estUsd = 0;
+        let isOrderTotal = false;
         if (btnPrice > 0) {
           estUsd = btnPrice;
         } else if (fromDom > 0) {
           estUsd = fromDom;
+          isOrderTotal = true;
         } else if (itemPrice > 0) {
           estUsd = itemPrice;
         } else {
@@ -1685,6 +1758,15 @@
           if (pageHero > 0) {
             estUsd = pageHero;
           }
+        }
+
+        if (estUsd > 0 && !isOrderTotal) {
+          try {
+            const qty = findQuantityNearClick(target);
+            if (qty > 1) {
+              estUsd = estUsd * qty;
+            }
+          } catch (_) {}
         }
 
         showInterceptorModal(estUsd, target, e.target);
