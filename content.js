@@ -672,15 +672,18 @@
       isTicketSite = host.includes('ticketmaster') || host.includes('seatgeek') || host.includes('stubhub');
     } catch (_) {}
 
+    const isCart = isLikelyCartOrCheckoutPath();
     const keywords = isTicketSite
-      ? /(check\s*out|place order|submit order|complete (purchase|order)|pay now|^(continue|next|buy tickets|get tickets|checkout)$|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i
+      ? (isCart
+          ? /(check\s*out|place order|submit order|complete (purchase|order)|pay now|^(continue|next|buy tickets|get tickets|checkout)$|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i
+          : /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i)
       : /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i;
 
     const exclude =
       /^(edit|back|cancel|close|apply|remove|delete|sign in|log in|prev|previous|return to shop|keep shopping|save for later)$/i;
     if (exclude.test(lower) && lower.length < 40) return null;
     if (!keywords.test(lower)) return null;
-    if (!isLikelyCartOrCheckoutPath() && !isTicketSite && !/(check\s*out|place order|submit order|pay now|結帳|付款|下單)/i.test(lower)) {
+    if (!isCart && !isTicketSite && !/(check\s*out|place order|submit order|pay now|結帳|付款|下單)/i.test(lower)) {
       return null;
     }
     return actionable;
@@ -1795,7 +1798,10 @@
         if (isTicketSite) {
           const raw = target.innerText || target.getAttribute('aria-label') || target.getAttribute('title') || '';
           const lower = String(raw).toLowerCase().trim();
-          const keywords = /(check\s*out|place order|submit order|complete (purchase|order)|pay now|^(continue|next|buy tickets|get tickets|checkout)$|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i;
+          const isCart = isLikelyCartOrCheckoutPath();
+          const keywords = isCart
+            ? /(check\s*out|place order|submit order|complete (purchase|order)|pay now|^(continue|next|buy tickets|get tickets|checkout)$|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i
+            : /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i;
           if (!keywords.test(lower)) return;
         }
         if (isVerificationOrAuthUi(target)) return;
