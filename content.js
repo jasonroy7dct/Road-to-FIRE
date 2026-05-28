@@ -542,19 +542,16 @@
       domain: 'seatgeek.com',
       priceSelector: '[class*="price" i]:not([data-voo-processed]), [data-testid*="price" i]:not([data-voo-processed])',
       priceExtract: schemaPrice,
-      cartButtons: '[data-testid="checkout-button"], button[data-testid*="continue" i], button[data-testid*="buy" i], a[href*="/checkout"], button[class*="checkout" i], button[class*="buy" i]',
     },
     {
       domain: 'ticketmaster.com',
       priceSelector: '[class*="price" i]:not([data-voo-processed]), [data-testid*="price" i]:not([data-voo-processed])',
       priceExtract: schemaPrice,
-      cartButtons: 'button[data-testid*="continue" i], button[data-testid*="next" i], button[data-testid*="buy" i], button[class*="checkout" i], button[data-testid*="checkout" i]',
     },
     {
       domain: 'stubhub.com',
       priceSelector: '[class*="price" i]:not([data-voo-processed]), [data-testid*="price" i]:not([data-voo-processed])',
       priceExtract: schemaPrice,
-      cartButtons: 'button[class*="checkout" i], button[class*="buy" i], button[data-testid*="continue" i], button[data-testid*="checkout" i], a[href*="/checkout"]',
     },
   ];
 
