@@ -537,6 +537,25 @@
     { domain: 'myprotein.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .productPrice_price:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-action="atb"], #add-to-basket, button[type="submit"]' },
     { domain: 'groupon.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .deal-price:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '[data-bhw="buy-button"], .buy-btn, button[type="submit"]' },
     { domain: 'rakuten.com', priceSelector: '[itemprop="price"]:not([data-voo-processed]), .price:not([data-voo-processed])', priceExtract: schemaPrice, cartButtons: '.add-to-cart, .buy-now, [href*="/checkout"]' },
+    // --- Ticketing / Sports / Concert Sites ---
+    {
+      domain: 'seatgeek.com',
+      priceSelector: '[class*="price" i]:not([data-voo-processed]), [data-testid*="price" i]:not([data-voo-processed])',
+      priceExtract: schemaPrice,
+      cartButtons: '[data-testid="checkout-button"], button[data-testid*="continue" i], button[data-testid*="buy" i], a[href*="/checkout"], button[class*="checkout" i], button[class*="buy" i]',
+    },
+    {
+      domain: 'ticketmaster.com',
+      priceSelector: '[class*="price" i]:not([data-voo-processed]), [data-testid*="price" i]:not([data-voo-processed])',
+      priceExtract: schemaPrice,
+      cartButtons: 'button[data-testid*="continue" i], button[data-testid*="next" i], button[data-testid*="buy" i], button[class*="checkout" i], button[data-testid*="checkout" i]',
+    },
+    {
+      domain: 'stubhub.com',
+      priceSelector: '[class*="price" i]:not([data-voo-processed]), [data-testid*="price" i]:not([data-voo-processed])',
+      priceExtract: schemaPrice,
+      cartButtons: 'button[class*="checkout" i], button[class*="buy" i], button[data-testid*="continue" i], button[data-testid*="checkout" i], a[href*="/checkout"]',
+    },
   ];
 
   /** Do not include global submit: will accidentally block "send verification code / login" forms. */
@@ -618,13 +637,22 @@
     const lower = String(raw).toLowerCase().trim();
     if (!lower) return null;
     if (isOtpOrSmsButtonText(lower)) return null;
-    const keywords =
-      /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i;
+
+    let isTicketSite = false;
+    try {
+      const host = window.location.hostname.toLowerCase();
+      isTicketSite = host.includes('ticketmaster') || host.includes('seatgeek') || host.includes('stubhub');
+    } catch (_) {}
+
+    const keywords = isTicketSite
+      ? /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue|next|buy tickets|get tickets|select|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i
+      : /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i;
+
     const exclude =
       /^(edit|back|cancel|close|apply|remove|delete|sign in|log in|prev|previous|return to shop|keep shopping|save for later)$/i;
     if (exclude.test(lower) && lower.length < 40) return null;
     if (!keywords.test(lower)) return null;
-    if (!isLikelyCartOrCheckoutPath() && !/(check\s*out|place order|submit order|pay now|結帳|付款|下單)/i.test(lower)) {
+    if (!isLikelyCartOrCheckoutPath() && !isTicketSite && !/(check\s*out|place order|submit order|pay now|結帳|付款|下單)/i.test(lower)) {
       return null;
     }
     return actionable;
@@ -934,9 +962,9 @@
         const className = (sel.className || '').toLowerCase();
         const dataAction = (sel.getAttribute('data-action') || '').toLowerCase();
         if (
-          name.includes('quantity') || name.includes('qty') ||
-          id.includes('quantity') || id.includes('qty') ||
-          className.includes('quantity') || className.includes('qty') ||
+          name.includes('quantity') || name.includes('qty') || name.includes('ticket') || name.includes('count') ||
+          id.includes('quantity') || id.includes('qty') || id.includes('ticket') || id.includes('count') ||
+          className.includes('quantity') || className.includes('qty') || className.includes('ticket') || className.includes('count') ||
           className.includes('quantity-select') || dataAction === 'a-select-quantity'
         ) {
           const val = parseInt(sel.value, 10);
@@ -954,11 +982,14 @@
         const role = (inp.getAttribute('role') || '').toLowerCase();
         
         const isQtyInput = 
-          name.includes('quantity') || name.includes('qty') ||
-          id.includes('quantity') || id.includes('qty') ||
-          className.includes('quantity') || className.includes('qty') ||
+          name.includes('quantity') || name.includes('qty') || name.includes('ticket') || name.includes('count') ||
+          id.includes('quantity') || id.includes('qty') || id.includes('ticket') || id.includes('count') ||
+          className.includes('quantity') || className.includes('qty') || className.includes('ticket') || className.includes('count') ||
           type === 'number' || role === 'spinbutton' ||
           inp.getAttribute('aria-label')?.toLowerCase().includes('quantity') ||
+          inp.getAttribute('aria-label')?.toLowerCase().includes('qty') ||
+          inp.getAttribute('aria-label')?.toLowerCase().includes('ticket') ||
+          inp.getAttribute('aria-label')?.toLowerCase().includes('count') ||
           inp.getAttribute('aria-label')?.toLowerCase().includes('數量') ||
           inp.getAttribute('aria-label')?.toLowerCase().includes('数量');
 
@@ -973,8 +1004,10 @@
     const globalSelectors = [
       'select#quantity', 'select[name="quantity"]', 'select[name="qty"]', 'select.quantity',
       'select.a-native-select', 'select[data-action="a-select-quantity"]',
+      'select[name*="ticket" i]', 'select[id*="ticket" i]', 'select[name*="count" i]', 'select[id*="count" i]',
       'input#quantity', 'input[name="quantity"]', 'input[name="qty"]', 'input.quantity',
-      'input.shopee-quantity-descriptor__input', 'input.qty-input'
+      'input.shopee-quantity-descriptor__input', 'input.qty-input',
+      'input[name*="ticket" i]', 'input[id*="ticket" i]', 'input[name*="count" i]', 'input[id*="count" i]'
     ];
     for (const selStr of globalSelectors) {
       try {

@@ -177,6 +177,9 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (n.includes('shinkong') || n.includes('新光三越') || n.includes('skm')) domain = 'skm.com.tw';
     else if (n.includes('ruten') || n.includes('露天')) domain = 'ruten.com.tw';
     else if (n.includes('taobao') || n.includes('淘寶')) domain = 'taobao.com';
+    else if (n.includes('ticketmaster')) domain = 'ticketmaster.com';
+    else if (n.includes('seatgeek')) domain = 'seatgeek.com';
+    else if (n.includes('stubhub')) domain = 'stubhub.com';
 
     if (!domain) {
       if (n.includes('.')) {
