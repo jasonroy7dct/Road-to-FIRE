@@ -557,7 +557,7 @@
 
   /** Do not include global submit: will accidentally block "send verification code / login" forms. */
   const genericCartButtonsCore =
-    'button[name="add"], button[name="checkout"], .add-to-cart, #add-to-cart, [aria-label*="checkout" i], [aria-label*="place order" i], [aria-label*="submit order" i], a[href*="checkout"], [data-testid*="add-to-cart" i], [data-testid*="AddToCart" i], [data-testid*="checkout" i], [data-testid*="place-order" i], [data-testid*="submit-order" i], [data-automation-id*="add-to-cart" i], [data-automation-id*="AddToCart" i], [data-automation*="checkout" i], button[data-add-to-cart], [aria-label*="add to cart" i], [aria-label*="加入購物車" i], [aria-label*="結帳" i], [role="button"][data-testid*="checkout" i]';
+    'button[name="add"], button[name="checkout"], .add-to-cart, #add-to-cart, [aria-label*="checkout" i], [aria-label*="place order" i], [aria-label*="submit order" i], [data-testid*="add-to-cart" i], [data-testid*="AddToCart" i], [data-testid*="checkout" i], [data-testid*="place-order" i], [data-testid*="submit-order" i], [data-automation-id*="add-to-cart" i], [data-automation-id*="AddToCart" i], [data-automation*="checkout" i], button[data-add-to-cart], [aria-label*="add to cart" i], [aria-label*="加入購物車" i], [aria-label*="結帳" i], [role="button"][data-testid*="checkout" i]';
 
   function genericCartSelectorsForPage() {
     if (isLikelyCartOrCheckoutPath()) {
