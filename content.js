@@ -586,6 +586,8 @@
         h.includes('cart') ||
         q.includes('checkout=1') ||
         q.includes('step=') || // covers multi-step checkout flows
+        host.includes('checkout') ||
+        host.includes('cart') ||
         // Taiwan-specific patterns
         p.includes('purchaselist') ||
         p.includes('cart.htm') ||
@@ -595,6 +597,28 @@
     } catch (_) {
       return false;
     }
+  }
+
+  function isTicketCheckoutPage() {
+    try {
+      const host = window.location.hostname.toLowerCase();
+      const p = window.location.pathname.toLowerCase();
+      const h = window.location.hash.toLowerCase();
+      const q = window.location.search.toLowerCase();
+      return (
+        host.includes('checkout') ||
+        host.includes('cart') ||
+        p.includes('checkout') ||
+        p.includes('secure') ||
+        p.includes('buy') ||
+        p.includes('pay') ||
+        p.includes('purchase') ||
+        p.includes('booking') ||
+        q.includes('checkout') ||
+        h.includes('checkout')
+      );
+    } catch (_) {}
+    return false;
   }
 
   function isAuthPage() {
@@ -1759,6 +1783,10 @@
           const lowerHost = host.toLowerCase();
           isTicketSite = lowerHost.includes('ticketmaster') || lowerHost.includes('seatgeek') || lowerHost.includes('stubhub');
         } catch (_) {}
+
+        if (isTicketSite && !isTicketCheckoutPage()) {
+          return;
+        }
 
         const useGeneric = !isTicketSite || isLikelyCartOrCheckoutPath();
         const mergedCartSelectors = currentSiteConfig
