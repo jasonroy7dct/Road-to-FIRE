@@ -600,6 +600,37 @@
     }
   }
 
+  function isAuthPage() {
+    try {
+      const host = (location.hostname || '').toLowerCase();
+      const path = (location.pathname || '').toLowerCase();
+      if (
+        host.startsWith('auth.') ||
+        host.startsWith('accounts.') ||
+        host.startsWith('login.') ||
+        host.startsWith('signin.') ||
+        host.startsWith('signup.') ||
+        host.includes('identity') ||
+        host.includes('oauth')
+      ) {
+        return true;
+      }
+      if (
+        path.includes('/login') ||
+        path.includes('/signin') ||
+        path.includes('/signup') ||
+        path.includes('/register') ||
+        path.includes('/auth') ||
+        path.includes('/oauth') ||
+        path.includes('/identity') ||
+        path.includes('/authorization')
+      ) {
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
   function isVerificationOrAuthUi(el) {
     if (!(el instanceof Element)) return false;
     const root =
@@ -1709,7 +1740,7 @@
     document.body.addEventListener(
       'click',
       (e) => {
-        if (!appSettings.enabled || bypassInterceptor) return;
+        if (!appSettings.enabled || bypassInterceptor || isAuthPage()) return;
         const host = window.location.hostname;
         let target = null;
 
