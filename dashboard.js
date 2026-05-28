@@ -141,6 +141,53 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (n.includes('home depot')) domain = 'homedepot.com';
     else if (n.includes('lowes')) domain = 'lowes.com';
     else if (n.includes('urban outfitters')) domain = 'urbanoutfitters.com';
+    else if (n.includes('wayfair')) domain = 'wayfair.com';
+    else if (n.includes('shein')) domain = 'shein.com';
+    else if (n.includes('etsy')) domain = 'etsy.com';
+    else if (n.includes('sams club') || n.includes('samsclub')) domain = 'samsclub.com';
+    else if (n.includes('kohl')) domain = 'kohls.com';
+    else if (n.includes('chewy')) domain = 'chewy.com';
+    else if (n.includes('petco')) domain = 'petco.com';
+    else if (n.includes('zappos')) domain = 'zappos.com';
+    else if (n.includes('newegg')) domain = 'newegg.com';
+    else if (n.includes('bhphotovideo') || n.includes('b&h') || n.includes('bhphoto')) domain = 'bhphotovideo.com';
+    else if (n.includes('adorama')) domain = 'adorama.com';
+    else if (n.includes('gamestop')) domain = 'gamestop.com';
+    else if (n.includes('rei')) domain = 'rei.com';
+    else if (n.includes('dicks')) domain = 'dickssportinggoods.com';
+    else if (n.includes('academy')) domain = 'academy.com';
+    else if (n.includes('staples')) domain = 'staples.com';
+    else if (n.includes('officedepot') || n.includes('office depot')) domain = 'officedepot.com';
+    else if (n.includes('lenovo')) domain = 'lenovo.com';
+    else if (n.includes('dell')) domain = 'dell.com';
+    else if (n.includes('hp')) domain = 'hp.com';
+    else if (n.includes('williams-sonoma')) domain = 'williams-sonoma.com';
+    else if (n.includes('potterybarn') || n.includes('pottery barn')) domain = 'potterybarn.com';
+    else if (n.includes('westelm') || n.includes('west elm')) domain = 'westelm.com';
+    else if (n.includes('bedbathandbeyond') || n.includes('bed bath')) domain = 'bedbathandbeyond.com';
+    else if (n.includes('overstock')) domain = 'overstock.com';
+    else if (n.includes('mercari')) domain = 'mercari.com';
+    else if (n.includes('offerup')) domain = 'offerup.com';
+    else if (n.includes('stockx')) domain = 'stockx.com';
+    else if (n.includes('goat')) domain = 'goat.com';
+    else if (n.includes('pxmart') || n.includes('全聯')) domain = 'pxmart.com.tw';
+    else if (n.includes('kingstone') || n.includes('金石堂')) domain = 'kingstone.com.tw';
+    else if (n.includes('sogo')) domain = 'sogo.com.tw';
+    else if (n.includes('breeze') || n.includes('微風')) domain = 'breeze.com.tw';
+    else if (n.includes('shinkong') || n.includes('新光三越') || n.includes('skm')) domain = 'skm.com.tw';
+    else if (n.includes('ruten') || n.includes('露天')) domain = 'ruten.com.tw';
+    else if (n.includes('taobao') || n.includes('淘寶')) domain = 'taobao.com';
+
+    if (!domain) {
+      if (n.includes('.')) {
+        domain = n;
+      } else {
+        const clean = n.replace(/[^a-z0-9]/g, '');
+        if (clean.length > 2) {
+          domain = `${clean}.com`;
+        }
+      }
+    }
 
     if (domain) {
       return `<img src="https://www.google.com/s2/favicons?sz=64&domain=${domain}" class="store-logo" alt="${name}">`;
