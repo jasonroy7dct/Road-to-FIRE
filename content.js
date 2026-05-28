@@ -1745,10 +1745,23 @@
 
         const currentSiteConfig = siteConfigs.find((c) => host.includes(c.domain));
         const genericSel = genericCartSelectorsForPage();
+        
+        let isTicketSite = false;
+        try {
+          const lowerHost = host.toLowerCase();
+          isTicketSite = lowerHost.includes('ticketmaster') || lowerHost.includes('seatgeek') || lowerHost.includes('stubhub');
+        } catch (_) {}
+
+        const useGeneric = !isTicketSite || isLikelyCartOrCheckoutPath();
         const mergedCartSelectors = currentSiteConfig
-          ? `${currentSiteConfig.cartButtons}, ${genericSel}`
-          : genericSel;
-        target = e.target.closest(mergedCartSelectors);
+          ? `${currentSiteConfig.cartButtons || ''}${currentSiteConfig.cartButtons && useGeneric ? ', ' : ''}${useGeneric ? genericSel : ''}`
+          : (useGeneric ? genericSel : '');
+
+        if (mergedCartSelectors && mergedCartSelectors.trim()) {
+          try {
+            target = e.target.closest(mergedCartSelectors);
+          } catch (_) {}
+        }
 
         if (target) {
           const raw = target.innerText || target.getAttribute('aria-label') || target.getAttribute('title') || '';
