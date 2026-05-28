@@ -673,19 +673,24 @@
     } catch (_) {}
 
     const isCart = isLikelyCartOrCheckoutPath();
-    const keywords = isTicketSite
-      ? (isCart
-          ? /(check\s*out|place order|submit order|complete (purchase|order)|pay now|^(continue|next|buy tickets|get tickets|checkout)$|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i
-          : /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i)
-      : /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i;
+    const strongKeywords = /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i;
+
+    if (isTicketSite) {
+      const isGenericTransition = isCart && /(continue|next|buy tickets|get tickets|checkout)/i.test(lower) && lower.length < 30;
+      if (!strongKeywords.test(lower) && !isGenericTransition) {
+        return null;
+      }
+    } else {
+      if (!strongKeywords.test(lower)) {
+        if (!isCart && !/(check\s*out|place order|submit order|pay now|結帳|付款|下單)/i.test(lower)) {
+          return null;
+        }
+      }
+    }
 
     const exclude =
       /^(edit|back|cancel|close|apply|remove|delete|sign in|log in|prev|previous|return to shop|keep shopping|save for later)$/i;
     if (exclude.test(lower) && lower.length < 40) return null;
-    if (!keywords.test(lower)) return null;
-    if (!isCart && !isTicketSite && !/(check\s*out|place order|submit order|pay now|結帳|付款|下單)/i.test(lower)) {
-      return null;
-    }
     return actionable;
   }
 
@@ -1799,10 +1804,9 @@
           const raw = target.innerText || target.getAttribute('aria-label') || target.getAttribute('title') || '';
           const lower = String(raw).toLowerCase().trim();
           const isCart = isLikelyCartOrCheckoutPath();
-          const keywords = isCart
-            ? /(check\s*out|place order|submit order|complete (purchase|order)|pay now|^(continue|next|buy tickets|get tickets|checkout)$|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i
-            : /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i;
-          if (!keywords.test(lower)) return;
+          const strongKeywords = /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i;
+          const isGenericTransition = isCart && /(continue|next|buy tickets|get tickets|checkout)/i.test(lower) && lower.length < 30;
+          if (!strongKeywords.test(lower) && !isGenericTransition) return;
         }
         if (isVerificationOrAuthUi(target)) return;
         if (isOtpOrSmsButtonText(target.innerText || target.getAttribute('aria-label') || '')) return;
