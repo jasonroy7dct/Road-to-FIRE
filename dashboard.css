@@ -133,6 +133,13 @@ body {
   color: #1a73e8;
 }
 
+.metric-unit {
+  font-size: 20px;
+  font-weight: 500;
+  color: #5f6368;
+  margin-left: 6px;
+}
+
 .metric-delta {
   margin-top: 8px;
   font-size: 13px;

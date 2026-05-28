@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const finalAmount = tw ? (cachedTotalUsd / globalTwdUsdRate) : cachedTotalUsd;
-    totalSharesEl.textContent = (finalAmount / price).toFixed(4);
+    totalSharesEl.innerHTML = `${(finalAmount / price).toFixed(4)} <span class="metric-unit">${tw ? '股' : 'Shares'}</span>`;
     assetLabelEl.textContent = `${tu} ${t.sharesLabel}`;
 
     chips.forEach(c => {
