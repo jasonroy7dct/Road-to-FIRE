@@ -1885,7 +1885,7 @@
           }
         }
 
-        if (estUsd > 0 && !isOrderTotal) {
+        if (estUsd > 0 && !isOrderTotal && !isTicketSite) {
           try {
             const qty = findQuantityNearClick(target);
             if (qty > 1) {
@@ -2220,7 +2220,7 @@
         showEncouragementToast(currentLang);
         bypassInterceptor = true;
 
-        const el = exactTarget || originalButton;
+        const el = originalButton || exactTarget;
         if (el) {
           setTimeout(() => {
             // 1. Try form requestSubmit (robust for Amazon/Momo forms)
