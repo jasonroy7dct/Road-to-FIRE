@@ -2223,18 +2223,7 @@
         const el = originalButton || exactTarget;
         if (el) {
           setTimeout(() => {
-            // 1. Try form requestSubmit (robust for Amazon/Momo forms)
-            const form = el.closest('form');
-            if (form && (el.type === 'submit' || el.tagName === 'BUTTON')) {
-              if (typeof form.requestSubmit === 'function') {
-                try {
-                  form.requestSubmit(el);
-                  return;
-                } catch (e) { }
-              }
-            }
-
-            // 2. Comprehensive Pointer/Mouse sequence for React/Vue/Momo JS handlers
+            // 1. Comprehensive Pointer/Mouse sequence for React/Vue/Angular JS handlers
             const opts = { bubbles: true, cancelable: true, view: window };
             el.dispatchEvent(new PointerEvent('pointerdown', opts));
             el.dispatchEvent(new MouseEvent('mousedown', opts));
@@ -2244,6 +2233,20 @@
             // Dispatch standard click event before native .click() to satisfy strict listeners
             el.dispatchEvent(new MouseEvent('click', opts));
             el.click();
+
+            // 2. Fallback form submission (for standard HTML forms)
+            const form = el.closest('form');
+            if (form && (el.type === 'submit' || el.tagName === 'BUTTON' || el.getAttribute('type') === 'submit')) {
+              if (typeof form.requestSubmit === 'function') {
+                try {
+                  form.requestSubmit(el);
+                } catch (e) { }
+              } else {
+                try {
+                  form.submit();
+                } catch (e) { }
+              }
+            }
 
             // 3. Forced Navigation Fallback for <a> tags
             const a = el.closest('a');
