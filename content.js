@@ -1792,6 +1792,12 @@
         }
 
         if (!target) return;
+        if (isTicketSite) {
+          const raw = target.innerText || target.getAttribute('aria-label') || target.getAttribute('title') || '';
+          const lower = String(raw).toLowerCase().trim();
+          const keywords = /(check\s*out|place order|submit order|complete (purchase|order)|pay now|^(continue|next|buy tickets|get tickets|checkout)$|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i;
+          if (!keywords.test(lower)) return;
+        }
         if (isVerificationOrAuthUi(target)) return;
         if (isOtpOrSmsButtonText(target.innerText || target.getAttribute('aria-label') || '')) return;
 
