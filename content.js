@@ -2091,7 +2091,54 @@
         else if (host.includes('walmart')) storeName = 'Walmart';
         else if (host.includes('ebay')) storeName = 'eBay';
         else if (host.includes('bestbuy')) storeName = 'BestBuy';
+        else if (host.includes('stubhub')) storeName = 'StubHub';
+        else if (host.includes('ticketmaster')) storeName = 'Ticketmaster';
+        else if (host.includes('seatgeek')) storeName = 'SeatGeek';
         else storeName = storeName.charAt(0).toUpperCase() + storeName.slice(1);
+
+        function extractEventOrPageTitle() {
+          const lowerHost = host.toLowerCase();
+          const isTicket = lowerHost.includes('ticketmaster') || lowerHost.includes('seatgeek') || lowerHost.includes('stubhub');
+          
+          if (isTicket) {
+            const selectors = [
+              '[data-testid*="event-title" i]',
+              '[data-testid*="event-name" i]',
+              '[data-testid*="eventName" i]',
+              '[data-testid*="eventTitle" i]',
+              '[class*="eventTitle" i]',
+              '[class*="eventName" i]',
+              '[class*="event-title" i]',
+              '[class*="event-name" i]',
+              '[class*="eventHeader" i]',
+              '[class*="event-header" i]',
+              'h1',
+              'h2'
+            ];
+            for (const sel of selectors) {
+              try {
+                const el = document.querySelector(sel);
+                if (el) {
+                  const text = el.innerText.trim();
+                  if (text && text.length > 3 && !/^\d{1,2}:\d{2}(\s|$)/.test(text) && !/checkout/i.test(text) && !/\d+\s+left/i.test(text)) {
+                    return text;
+                  }
+                }
+              } catch (_) {}
+            }
+          }
+          
+          let titleVal = document.title || '';
+          if (/^\d{1,2}:\d{2}(\s|$)/.test(titleVal.trim()) || /checkout/i.test(titleVal.trim()) || titleVal.trim().length <= 5 || /\d+\s+left/i.test(titleVal)) {
+            try {
+              const h1 = document.querySelector('h1');
+              if (h1 && h1.innerText.trim().length > 3) {
+                return h1.innerText.trim();
+              }
+            } catch (_) {}
+          }
+          return titleVal;
+        }
 
         savedItems.push({
           timestamp: Date.now(),
@@ -2101,7 +2148,7 @@
           ticker: appSettings.ticker,
           shares: (Number(estUsd) * exRate) / Number(appSettings.price),
           url: window.location.href,
-          title: document.title,
+          title: extractEventOrPageTitle(),
           store: storeName
         });
 
