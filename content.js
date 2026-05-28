@@ -676,7 +676,7 @@
     } catch (_) {}
 
     const keywords = isTicketSite
-      ? /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue|next|buy tickets|get tickets|select|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i
+      ? /(check\s*out|place order|submit order|complete (purchase|order)|pay now|^(continue|next|buy tickets|get tickets|checkout)$|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i
       : /(check\s*out|place order|submit order|complete (purchase|order)|pay now|continue to checkout|continue securely|order and pay|submit payment|make payment|secure checkout|proceed to checkout|go to checkout|review order|confirm purchase|結帳|付款|下單|送出|前往結帳|去買單|立即購買)/i;
 
     const exclude =
